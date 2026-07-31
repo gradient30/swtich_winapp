@@ -152,10 +152,10 @@ public sealed class SingleInstance : IDisposable
             // 忽略
         }
 
-        if (_waitThread != null && _waitThread.IsAlive)
-        {
-            _waitThread.Join(1000);
-        }
+        // 不在可能持有 UI 调度器的线程上同步 Join，
+        // 以免与回调中的 Dispatcher 操作互相等待。
+        // 等待线程为 IsBackground，进程退出时会自动结束。
+        _waitThread = null;
 
         if (_isPrimary)
         {

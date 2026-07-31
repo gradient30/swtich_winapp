@@ -308,10 +308,13 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     private void ApplyStartWithWindows(bool enabled)
     {
+        var exePath = StartupRegistration.GetCurrentExecutablePath();
+        var registryApplied = false;
+
         try
         {
-            var exePath = StartupRegistration.GetCurrentExecutablePath();
             _startupRegistration.Apply(enabled, exePath);
+            registryApplied = true;
 
             var config = _configStore.Load();
             config.StartWithWindows = enabled;
@@ -323,6 +326,19 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
+            if (registryApplied)
+            {
+                try
+                {
+                    // 配置保存失败时撤销已写入的 Run 项
+                    _startupRegistration.Apply(!enabled, exePath);
+                }
+                catch (Exception)
+                {
+                    // 尽力回滚；最终以状态提示为准
+                }
+            }
+
             _suppressStartupApply = true;
             try
             {

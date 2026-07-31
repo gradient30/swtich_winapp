@@ -49,6 +49,17 @@ public partial class App : Application
             return;
         }
 
+        // 注销/关机时允许真正退出，避免托盘残留
+        SessionEnding += (_, _) =>
+        {
+            if (_mainWindow != null)
+            {
+                _mainWindow.AllowClose = true;
+            }
+
+            _isExiting = true;
+        };
+
         _mainWindow = new MainWindow();
         _viewModel = _mainWindow.ViewModel;
         MainWindow = _mainWindow;
@@ -59,8 +70,9 @@ public partial class App : Application
 
         InitializeTrayIcon();
 
+        // BeginInvoke 避免退出时 Dispose/Join 与同步 Invoke 死锁
         _singleInstance.BeginWaitForShowSignal(
-            () => Dispatcher.Invoke(ShowMainWindow));
+            () => Dispatcher.BeginInvoke(ShowMainWindow));
     }
 
     /// <inheritdoc />
@@ -161,7 +173,9 @@ public partial class App : Application
     /// </summary>
     private void ShowMainWindow()
     {
-        if (_mainWindow == null)
+        if (_isExiting
+            || Dispatcher.HasShutdownStarted
+            || _mainWindow == null)
         {
             return;
         }
