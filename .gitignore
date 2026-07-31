@@ -1,0 +1,7 @@
+﻿.worktrees/
+worktrees/
+bin/
+obj/
+*.user
+*.suo
+.vs/
