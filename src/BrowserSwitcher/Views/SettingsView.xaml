@@ -11,6 +11,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <TextBlock Grid.Row="0"
@@ -19,14 +20,67 @@
                    FontWeight="SemiBold"
                    Margin="0,0,0,12" />
 
-        <TextBlock Grid.Row="1"
-                   Text="设置页占位：后续可配置手动路径与开机启动。"
-                   TextWrapping="Wrap"
-                   Opacity="0.75" />
+        <DockPanel Grid.Row="1" LastChildFill="True">
+            <TextBlock DockPanel.Dock="Top"
+                       Text="手动路径"
+                       FontWeight="SemiBold"
+                       Margin="0,0,0,8" />
+            <TextBlock DockPanel.Dock="Top"
+                       Text="可编辑已保存的手动路径；清空路径并保存即可删除。"
+                       Opacity="0.7"
+                       TextWrapping="Wrap"
+                       Margin="0,0,0,8" />
 
-        <Button Grid.Row="2"
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding ManualPathEntries}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="140" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding DisplayName}"
+                                           VerticalAlignment="Center"
+                                           TextWrapping="Wrap" />
+                                <TextBox Grid.Column="1"
+                                         Margin="8,0,8,0"
+                                         VerticalContentAlignment="Center"
+                                         Text="{Binding Path=Path,
+                                            UpdateSourceTrigger=PropertyChanged}" />
+                                <Button Grid.Column="2"
+                                        Content="移除"
+                                        Padding="10,4"
+                                        Command="{Binding DataContext.RemoveManualPathCommand,
+                                            RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </DockPanel>
+
+        <StackPanel Grid.Row="2" Margin="0,12,0,0">
+            <Button Content="保存手动路径"
+                    Width="120"
+                    HorizontalAlignment="Left"
+                    Padding="8,4"
+                    Command="{Binding SaveManualPathsCommand}" />
+            <CheckBox Margin="0,12,0,0"
+                      Content="开机启动"
+                      IsChecked="{Binding StartWithWindows}" />
+            <TextBlock Margin="0,12,0,0"
+                       Opacity="0.8"
+                       Text="{Binding AppVersion, StringFormat=版本：{0}}" />
+        </StackPanel>
+
+        <Button Grid.Row="3"
                 Content="返回"
                 Width="100"
+                Margin="0,16,0,0"
                 HorizontalAlignment="Left"
                 Command="{Binding BackToMainCommand}" />
     </Grid>

@@ -95,7 +95,7 @@
             </ListBox>
         </Grid>
 
-        <!-- 设置页占位 -->
+        <!-- 设置页 -->
         <views:SettingsView Grid.Row="0">
             <views:SettingsView.Style>
                 <Style TargetType="views:SettingsView">

@@ -3,7 +3,7 @@ using System.Windows.Controls;
 namespace BrowserSwitcher.Views;
 
 /// <summary>
-/// 设置页占位视图（Task 5 最小 stub）。
+/// 设置页：手动路径、开机启动与版本信息。
 /// </summary>
 public partial class SettingsView : UserControl
 {
