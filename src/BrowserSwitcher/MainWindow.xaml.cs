@@ -25,10 +25,25 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 关闭时隐藏到后台，不退出进程（托盘任务再接真正退出）。
+    /// 主窗口视图模型（托盘菜单与主界面共用）。
+    /// </summary>
+    public MainViewModel ViewModel => _viewModel;
+
+    /// <summary>
+    /// 为 true 时允许真正关闭窗口（托盘「退出」时设置）。
+    /// </summary>
+    public bool AllowClose { get; set; }
+
+    /// <summary>
+    /// 关闭时默认隐藏到托盘；仅当 <see cref="AllowClose"/> 为 true 时退出。
     /// </summary>
     private void Window_Closing(object sender, CancelEventArgs e)
     {
+        if (AllowClose)
+        {
+            return;
+        }
+
         e.Cancel = true;
         Hide();
     }
