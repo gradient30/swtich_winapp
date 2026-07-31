@@ -172,6 +172,7 @@ public sealed class BrowserDetector
 
     /// <summary>
     /// 从 HKLM App Paths 读取可执行文件路径（同时查 64/32 位视图）。
+    /// 仅返回实际存在的路径；某视图路径无效时继续查下一视图。
     /// </summary>
     private static string? TryReadAppPath(string executableName)
     {
@@ -185,9 +186,15 @@ public sealed class BrowserDetector
                 using var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, view);
                 using var key = baseKey.OpenSubKey(subKeyPath);
                 var value = key?.GetValue(null) as string;
-                if (!string.IsNullOrWhiteSpace(value))
+                if (string.IsNullOrWhiteSpace(value))
                 {
-                    return Environment.ExpandEnvironmentVariables(value.Trim('"'));
+                    continue;
+                }
+
+                var path = Environment.ExpandEnvironmentVariables(value.Trim('"'));
+                if (File.Exists(path))
+                {
+                    return path;
                 }
             }
             catch (System.Security.SecurityException)
@@ -197,6 +204,10 @@ public sealed class BrowserDetector
             catch (UnauthorizedAccessException)
             {
                 // 同上
+            }
+            catch (IOException)
+            {
+                // 注册表 IO 损坏时跳过该视图
             }
         }
 
