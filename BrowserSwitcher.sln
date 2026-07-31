@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{85B40D73-EC3D-4802-BD4E-7AC4F25A3FF7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BrowserSwitcher", "src\BrowserSwitcher\BrowserSwitcher.csproj", "{74AB4259-B906-46F5-8F3A-5A03CC3313FC}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{C25341AF-2B12-4559-A494-1AF1F211D113}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BrowserSwitcher.Tests", "tests\BrowserSwitcher.Tests\BrowserSwitcher.Tests.csproj", "{CC6CCE9D-BCE4-4D01-8B1D-5B4FAC4A4023}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{74AB4259-B906-46F5-8F3A-5A03CC3313FC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{74AB4259-B906-46F5-8F3A-5A03CC3313FC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{74AB4259-B906-46F5-8F3A-5A03CC3313FC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{74AB4259-B906-46F5-8F3A-5A03CC3313FC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CC6CCE9D-BCE4-4D01-8B1D-5B4FAC4A4023}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CC6CCE9D-BCE4-4D01-8B1D-5B4FAC4A4023}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CC6CCE9D-BCE4-4D01-8B1D-5B4FAC4A4023}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CC6CCE9D-BCE4-4D01-8B1D-5B4FAC4A4023}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{74AB4259-B906-46F5-8F3A-5A03CC3313FC} = {85B40D73-EC3D-4802-BD4E-7AC4F25A3FF7}
+		{CC6CCE9D-BCE4-4D01-8B1D-5B4FAC4A4023} = {C25341AF-2B12-4559-A494-1AF1F211D113}
+	EndGlobalSection
+EndGlobal
