@@ -44,6 +44,8 @@ public class ConfigStoreTests
             var loaded = store.Load();
             Assert.NotNull(loaded.ManualPaths);
             Assert.Empty(loaded.ManualPaths);
+            Assert.True(store.LastLoadUsedFallback);
+            Assert.False(string.IsNullOrWhiteSpace(store.LastLoadFallbackReason));
         }
         finally
         {

@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Windows;
 using System.Windows.Input;
 using BrowserSwitcher.Models;
 using BrowserSwitcher.Services;
@@ -158,7 +159,16 @@ public sealed class MainViewModel : INotifyPropertyChanged
                 Browsers.Add(browser);
             }
 
-            StatusMessage = $"已刷新，共 {Browsers.Count} 项";
+            if (_configStore.LastLoadUsedFallback)
+            {
+                var reason = _configStore.LastLoadFallbackReason
+                             ?? "配置已回退为默认";
+                StatusMessage = reason;
+            }
+            else
+            {
+                StatusMessage = $"已刷新，共 {Browsers.Count} 项";
+            }
         }
         catch (Exception ex)
         {
@@ -182,6 +192,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
         catch (Exception ex)
         {
             StatusMessage = $"无法打开系统设置：{ex.Message}";
+            MessageBox.Show(
+                $"无法打开系统默认应用设置页。\n\n{ex.Message}\n\n"
+                + "请手动打开：设置 → 应用 → 默认应用。",
+                "浏览器切换器",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
         }
     }
 
