@@ -3,10 +3,129 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:BrowserSwitcher"
+        xmlns:views="clr-namespace:BrowserSwitcher.Views"
+        xmlns:models="clr-namespace:BrowserSwitcher.Models"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
+        Title="浏览器切换器"
+        Height="480"
+        Width="720"
+        MinHeight="360"
+        MinWidth="560"
+        Closing="Window_Closing">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
 
+        <!-- 主列表 -->
+        <Grid Grid.Row="0">
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Setter Property="Visibility" Value="Visible" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsSettingsVisible}" Value="True">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Style>
+
+            <ListBox ItemsSource="{Binding Browsers}"
+                     BorderThickness="1"
+                     HorizontalContentAlignment="Stretch">
+                <ListBox.ItemTemplate>
+                    <DataTemplate DataType="{x:Type models:BrowserInfo}">
+                        <Grid Margin="4,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Orientation="Vertical">
+                                <TextBlock Text="{Binding DisplayName}"
+                                           FontSize="15"
+                                           FontWeight="SemiBold" />
+                                <TextBlock Margin="0,2,0,0" Opacity="0.85">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="未知" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Status}"
+                                                             Value="Installed">
+                                                    <Setter Property="Text" Value="状态：已安装" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Status}"
+                                                             Value="Manual">
+                                                    <Setter Property="Text" Value="状态：手动指定" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Status}"
+                                                             Value="NotFound">
+                                                    <Setter Property="Text" Value="状态：未找到" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Margin="0,2,0,0"
+                                           Opacity="0.7"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding ExecutablePath,
+                                                    TargetNullValue=路径：无,
+                                                    StringFormat=路径：{0}}" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1"
+                                        Orientation="Horizontal"
+                                        VerticalAlignment="Center">
+                                <Button Content="设为默认"
+                                        Margin="0,0,8,0"
+                                        Padding="10,4"
+                                        Command="{Binding DataContext.SetAsDefaultCommand,
+                                            RelativeSource={RelativeSource AncestorType=Window}}"
+                                        CommandParameter="{Binding}" />
+                                <Button Content="指定路径"
+                                        Padding="10,4"
+                                        Tag="{Binding}"
+                                        Click="AssignPath_Click" />
+                            </StackPanel>
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Grid>
+
+        <!-- 设置页占位 -->
+        <views:SettingsView Grid.Row="0">
+            <views:SettingsView.Style>
+                <Style TargetType="views:SettingsView">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsSettingsVisible}" Value="True">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </views:SettingsView.Style>
+        </views:SettingsView>
+
+        <!-- 底部操作栏 -->
+        <DockPanel Grid.Row="1" Margin="0,12,0,0" LastChildFill="True">
+            <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+                <Button Content="刷新"
+                        Width="88"
+                        Margin="0,0,8,0"
+                        Padding="8,4"
+                        Command="{Binding RefreshCommand}" />
+                <Button Content="设置"
+                        Width="88"
+                        Padding="8,4"
+                        Command="{Binding OpenSettingsCommand}" />
+            </StackPanel>
+            <TextBlock Margin="16,0,0,0"
+                       VerticalAlignment="Center"
+                       TextWrapping="Wrap"
+                       Text="{Binding StatusMessage}" />
+        </DockPanel>
     </Grid>
 </Window>
