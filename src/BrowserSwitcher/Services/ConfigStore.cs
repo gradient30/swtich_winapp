@@ -32,8 +32,10 @@ public sealed class ConfigStore
             }
 
             var json = File.ReadAllText(_configPath);
-            return JsonSerializer.Deserialize<AppConfig>(json, JsonOptions)
-                   ?? new AppConfig();
+            var config = JsonSerializer.Deserialize<AppConfig>(json, JsonOptions)
+                         ?? new AppConfig();
+            config.ManualPaths ??= new Dictionary<string, string>();
+            return config;
         }
         catch (JsonException)
         {

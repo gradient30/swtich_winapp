@@ -50,4 +50,25 @@ public class ConfigStoreTests
             Directory.Delete(dir, true);
         }
     }
+
+    [Fact]
+    public void Load_NullManualPaths_ReturnsEmptyDictionary()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "bs-test-" + Guid.NewGuid());
+        Directory.CreateDirectory(dir);
+        try
+        {
+            File.WriteAllText(
+                Path.Combine(dir, "config.json"),
+                "{\"ManualPaths\":null}");
+            var store = new ConfigStore(dir);
+            var loaded = store.Load();
+            Assert.NotNull(loaded.ManualPaths);
+            Assert.Empty(loaded.ManualPaths);
+        }
+        finally
+        {
+            Directory.Delete(dir, true);
+        }
+    }
 }
