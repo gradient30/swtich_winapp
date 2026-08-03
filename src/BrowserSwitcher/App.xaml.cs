@@ -1,10 +1,10 @@
-﻿using System.Drawing;
-using System.Windows;
-using System.Windows.Controls;
-using BrowserSwitcher.Helpers;
+﻿using BrowserSwitcher.Helpers;
 using BrowserSwitcher.Models;
 using BrowserSwitcher.ViewModels;
 using Hardcodet.Wpf.TaskbarNotification;
+using System.Drawing;
+using System.Windows;
+using System.Windows.Controls;
 
 namespace BrowserSwitcher;
 
@@ -90,31 +90,39 @@ public partial class App : Application
         _trayIcon = (TaskbarIcon)FindResource("TrayIcon");
         _trayIconHandle = (Icon)SystemIcons.Application.Clone();
         _trayIcon.Icon = _trayIconHandle;
-        _trayIcon.ToolTipText = "浏览器切换器";
+        UpdateTrayTooltip();
         _trayIcon.TrayLeftMouseUp += (_, _) => ToggleMainWindow();
-        // 在菜单弹出前重建，保证项与 MainViewModel 列表一致
-        _trayIcon.TrayRightMouseDown += (_, _) => RebuildTrayContextMenu();
-        RebuildTrayContextMenu();
+        // 自行弹出菜单并锚定到光标，避免多屏下 ContextMenu 错位
+        _trayIcon.TrayRightMouseUp += (_, _) => ShowTrayContextMenu();
     }
 
     /// <summary>
-    /// 按当前浏览器列表重建托盘右键菜单。
+    /// 在托盘图标旁（当前光标位置）弹出右键菜单。
     /// </summary>
-    private void RebuildTrayContextMenu()
+    private void ShowTrayContextMenu()
     {
         if (_trayIcon == null || _viewModel == null)
         {
             return;
         }
 
+        // 打开菜单前刷新，保证「当前默认」标记最新
+        _viewModel.Refresh();
+        UpdateTrayTooltip();
+
         var menu = new ContextMenu();
 
         foreach (BrowserInfo browser in _viewModel.Browsers)
         {
+            var header = browser.IsCurrentDefault
+                ? $"{browser.DisplayName}（当前）"
+                : browser.DisplayName;
             var item = new MenuItem
             {
-                Header = browser.DisplayName,
-                Tag = browser
+                Header = header,
+                Tag = browser,
+                IsChecked = browser.IsCurrentDefault,
+                IsCheckable = browser.IsCurrentDefault
             };
             item.Click += BrowserMenuItem_Click;
             menu.Items.Add(item);
@@ -133,7 +141,29 @@ public partial class App : Application
         exitItem.Click += (_, _) => ExitApplication();
         menu.Items.Add(exitItem);
 
-        _trayIcon.ContextMenu = menu;
+        // 不挂到 TaskbarIcon.ContextMenu，避免库内定位跑到其他显示器
+        _trayIcon.ContextMenu = null;
+        TrayContextMenuPresenter.ShowNearCursor(menu, _mainWindow);
+    }
+
+    /// <summary>
+    /// 更新托盘悬停提示，包含当前默认浏览器。
+    /// </summary>
+    private void UpdateTrayTooltip()
+    {
+        if (_trayIcon == null)
+        {
+            return;
+        }
+
+        if (_viewModel?.CurrentDefaultDisplayName is { } name)
+        {
+            _trayIcon.ToolTipText = $"浏览器切换器\n当前默认：{name}";
+        }
+        else
+        {
+            _trayIcon.ToolTipText = "浏览器切换器\n当前默认：未识别";
+        }
     }
 
     /// <summary>
@@ -145,6 +175,7 @@ public partial class App : Application
             && _viewModel != null)
         {
             _viewModel.SetAsDefault(browser);
+            ShowMainWindow();
         }
     }
 
@@ -184,6 +215,9 @@ public partial class App : Application
         {
             _mainWindow.Show();
         }
+
+        _viewModel?.Refresh();
+        UpdateTrayTooltip();
 
         if (_mainWindow.WindowState == WindowState.Minimized)
         {

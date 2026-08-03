@@ -18,7 +18,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private readonly BrowserDetector _detector;
     private readonly SettingsLauncher _settingsLauncher;
     private readonly StartupRegistration _startupRegistration;
+    private readonly DefaultBrowserResolver _defaultBrowserResolver;
     private string _statusMessage = string.Empty;
+    private string _currentDefaultSummary = "当前默认浏览器：检测中…";
     private bool _isSettingsVisible;
     private bool _startWithWindows;
     private bool _suppressStartupApply;
@@ -31,7 +33,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
             new ConfigStore(),
             new BrowserDetector(),
             new SettingsLauncher(),
-            new StartupRegistration())
+            new StartupRegistration(),
+            new DefaultBrowserResolver())
     {
     }
 
@@ -42,11 +45,13 @@ public sealed class MainViewModel : INotifyPropertyChanged
     /// <param name="detector">浏览器检测。</param>
     /// <param name="settingsLauncher">系统默认应用设置页启动器。</param>
     /// <param name="startupRegistration">开机启动注册。</param>
+    /// <param name="defaultBrowserResolver">当前默认浏览器解析。</param>
     public MainViewModel(
         ConfigStore configStore,
         BrowserDetector detector,
         SettingsLauncher settingsLauncher,
-        StartupRegistration startupRegistration)
+        StartupRegistration startupRegistration,
+        DefaultBrowserResolver? defaultBrowserResolver = null)
     {
         _configStore = configStore
             ?? throw new ArgumentNullException(nameof(configStore));
@@ -56,6 +61,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
             ?? throw new ArgumentNullException(nameof(settingsLauncher));
         _startupRegistration = startupRegistration
             ?? throw new ArgumentNullException(nameof(startupRegistration));
+        _defaultBrowserResolver = defaultBrowserResolver
+                                  ?? new DefaultBrowserResolver();
 
         AppVersion = ResolveAppVersion();
 
@@ -94,6 +101,16 @@ public sealed class MainViewModel : INotifyPropertyChanged
         get => _statusMessage;
         private set => SetField(ref _statusMessage, value);
     }
+
+    /// <summary>当前系统默认浏览器摘要，用于主窗口顶部与托盘提示。</summary>
+    public string CurrentDefaultSummary
+    {
+        get => _currentDefaultSummary;
+        private set => SetField(ref _currentDefaultSummary, value);
+    }
+
+    /// <summary>当前默认浏览器显示名；无法识别时为 null。</summary>
+    public string? CurrentDefaultDisplayName { get; private set; }
 
     /// <summary>是否显示设置页。</summary>
     public bool IsSettingsVisible
@@ -152,12 +169,32 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             var config = _configStore.Load();
             var detected = _detector.Detect(config);
+            var defaultId = _defaultBrowserResolver.ResolveCurrentDefaultId(
+                detected);
 
             Browsers.Clear();
+            BrowserInfo? currentDefault = null;
             foreach (var browser in detected)
             {
-                Browsers.Add(browser);
+                var marked = new BrowserInfo
+                {
+                    Id = browser.Id,
+                    DisplayName = browser.DisplayName,
+                    ExecutablePath = browser.ExecutablePath,
+                    Status = browser.Status,
+                    IsCurrentDefault = browser.Id == defaultId
+                };
+                Browsers.Add(marked);
+                if (marked.IsCurrentDefault)
+                {
+                    currentDefault = marked;
+                }
             }
+
+            CurrentDefaultDisplayName = currentDefault?.DisplayName;
+            CurrentDefaultSummary = currentDefault is null
+                ? "当前默认浏览器：未识别（可能是其他浏览器）"
+                : $"当前默认浏览器：{currentDefault.DisplayName}";
 
             if (_configStore.LastLoadUsedFallback)
             {

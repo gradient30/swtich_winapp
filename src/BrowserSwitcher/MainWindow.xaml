@@ -14,12 +14,36 @@
         Closing="Window_Closing">
     <Grid Margin="12">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
+        <Border Grid.Row="0"
+                Padding="10,8"
+                Margin="0,0,0,10"
+                Background="#F3F6FA"
+                BorderBrush="#D0D7DE"
+                BorderThickness="1"
+                CornerRadius="4">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Visibility" Value="Visible" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsSettingsVisible}" Value="True">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <TextBlock Text="{Binding CurrentDefaultSummary}"
+                       FontSize="14"
+                       FontWeight="SemiBold"
+                       TextWrapping="Wrap" />
+        </Border>
+
         <!-- 主列表 -->
-        <Grid Grid.Row="0">
+        <Grid Grid.Row="1">
             <Grid.Style>
                 <Style TargetType="Grid">
                     <Setter Property="Visibility" Value="Visible" />
@@ -43,30 +67,34 @@
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Grid.Column="0" Orientation="Vertical">
-                                <TextBlock Text="{Binding DisplayName}"
-                                           FontSize="15"
-                                           FontWeight="SemiBold" />
-                                <TextBlock Margin="0,2,0,0" Opacity="0.85">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Text" Value="未知" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding Status}"
-                                                             Value="Installed">
-                                                    <Setter Property="Text" Value="状态：已安装" />
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding Status}"
-                                                             Value="Manual">
-                                                    <Setter Property="Text" Value="状态：手动指定" />
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding Status}"
-                                                             Value="NotFound">
-                                                    <Setter Property="Text" Value="状态：未找到" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding DisplayName}"
+                                               FontSize="15"
+                                               FontWeight="SemiBold" />
+                                    <Border Margin="8,0,0,0"
+                                            Padding="6,1"
+                                            Background="#1F6FEB"
+                                            CornerRadius="3"
+                                            VerticalAlignment="Center">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsCurrentDefault}"
+                                                                 Value="True">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <TextBlock Text="当前"
+                                                   Foreground="White"
+                                                   FontSize="11" />
+                                    </Border>
+                                </StackPanel>
+                                <TextBlock Margin="0,2,0,0"
+                                           Opacity="0.85"
+                                           Text="{Binding StatusDisplay}" />
                                 <TextBlock Margin="0,2,0,0"
                                            Opacity="0.7"
                                            TextWrapping="Wrap"
@@ -78,7 +106,7 @@
                             <StackPanel Grid.Column="1"
                                         Orientation="Horizontal"
                                         VerticalAlignment="Center">
-                                <Button Content="设为默认"
+                                <Button Content="打开系统设置"
                                         Margin="0,0,8,0"
                                         Padding="10,4"
                                         Command="{Binding DataContext.SetAsDefaultCommand,
@@ -96,7 +124,7 @@
         </Grid>
 
         <!-- 设置页 -->
-        <views:SettingsView Grid.Row="0">
+        <views:SettingsView Grid.Row="1">
             <views:SettingsView.Style>
                 <Style TargetType="views:SettingsView">
                     <Setter Property="Visibility" Value="Collapsed" />
@@ -110,7 +138,7 @@
         </views:SettingsView>
 
         <!-- 底部操作栏 -->
-        <DockPanel Grid.Row="1" Margin="0,12,0,0" LastChildFill="True">
+        <DockPanel Grid.Row="2" Margin="0,12,0,0" LastChildFill="True">
             <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
                 <Button Content="刷新"
                         Width="88"
