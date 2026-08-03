@@ -177,6 +177,11 @@ public partial class App : Application
             menu.Items.Add(sep);
         }
 
+        var settingsItem = new MenuItem { Header = "打开默认应用设置…" };
+        ApplyTrayMenuItemTheme(settingsItem);
+        settingsItem.Click += (_, _) => _viewModel?.OpenDefaultAppsSettings();
+        menu.Items.Add(settingsItem);
+
         var openItem = new MenuItem { Header = "打开主窗口" };
         ApplyTrayMenuItemTheme(openItem);
         openItem.Click += (_, _) => ShowMainWindow();
