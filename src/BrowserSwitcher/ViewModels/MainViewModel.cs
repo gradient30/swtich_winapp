@@ -99,6 +99,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ShowHelpCommand = new RelayCommand(_ => ShowHelp());
         SetDarkThemeCommand = new RelayCommand(_ => SetTheme(ThemeService.Dark));
         SetLightThemeCommand = new RelayCommand(_ => SetTheme(ThemeService.Light));
+        OpenDefaultAppsSettingsCommand = new RelayCommand(
+            _ => OpenDefaultAppsSettings());
     }
 
     /// <summary>当前检测到的浏览器列表。</summary>
@@ -182,6 +184,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     /// <summary>切换到浅色主题。</summary>
     public ICommand SetLightThemeCommand { get; }
+
+    /// <summary>打开系统默认应用设置页（托盘快捷跳转）。</summary>
+    public ICommand OpenDefaultAppsSettingsCommand { get; }
 
     /// <summary>当前是否深色主题（菜单勾选）。</summary>
     public bool IsDarkTheme =>
@@ -286,6 +291,28 @@ public sealed class MainViewModel : INotifyPropertyChanged
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
             }
+        }
+    }
+
+    /// <summary>
+    /// 打开系统默认应用设置页（托盘快捷跳转）。
+    /// </summary>
+    public void OpenDefaultAppsSettings()
+    {
+        try
+        {
+            _settingsLauncher.OpenDefaultApps();
+            StatusMessage = "已打开系统默认应用设置，请选择目标浏览器。";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"无法打开系统设置：{ex.Message}";
+            MessageBox.Show(
+                $"无法打开系统默认应用设置页。\n\n{ex.Message}\n\n"
+                + "请手动打开：设置 → 应用 → 默认应用。",
+                "浏览器切换器",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
         }
     }
 
