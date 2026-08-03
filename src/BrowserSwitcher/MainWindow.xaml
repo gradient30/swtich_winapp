@@ -7,153 +7,216 @@
         xmlns:models="clr-namespace:BrowserSwitcher.Models"
         mc:Ignorable="d"
         Title="浏览器切换器"
-        Height="480"
-        Width="720"
-        MinHeight="360"
-        MinWidth="560"
+        Height="560"
+        Width="760"
+        MinHeight="420"
+        MinWidth="640"
+        Background="{StaticResource BrushBgDeep}"
         Closing="Window_Closing">
-    <Grid Margin="12">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
+    <DockPanel>
+        <!-- 顶部菜单栏：设置可扩展下拉 -->
+        <Menu DockPanel.Dock="Top" Style="{StaticResource MenuBarStyle}">
+            <MenuItem Header="设置(_S)">
+                <MenuItem Header="偏好设置…"
+                          Command="{Binding OpenSettingsCommand}" />
+                <!-- 预留：后续可在此追加更多设置项 -->
+            </MenuItem>
+            <MenuItem Header="视图(_V)">
+                <MenuItem Header="刷新列表"
+                          Command="{Binding RefreshCommand}" />
+            </MenuItem>
+        </Menu>
 
-        <Border Grid.Row="0"
-                Padding="10,8"
-                Margin="0,0,0,10"
-                Background="#F3F6FA"
-                BorderBrush="#D0D7DE"
-                BorderThickness="1"
-                CornerRadius="4">
-            <Border.Style>
-                <Style TargetType="Border">
-                    <Setter Property="Visibility" Value="Visible" />
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding IsSettingsVisible}" Value="True">
-                            <Setter Property="Visibility" Value="Collapsed" />
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </Border.Style>
-            <TextBlock Text="{Binding CurrentDefaultSummary}"
-                       FontSize="14"
-                       FontWeight="SemiBold"
-                       TextWrapping="Wrap" />
+        <Border DockPanel.Dock="Bottom" Style="{StaticResource StatusBarStyle}">
+            <DockPanel LastChildFill="True">
+                <Button DockPanel.Dock="Left"
+                        Content="刷新"
+                        Style="{StaticResource GhostButton}"
+                        Margin="0,0,12,0"
+                        Command="{Binding RefreshCommand}" />
+                <TextBlock VerticalAlignment="Center"
+                           Foreground="{StaticResource BrushTextMuted}"
+                           TextWrapping="Wrap"
+                           Text="{Binding StatusMessage}" />
+            </DockPanel>
         </Border>
 
-        <!-- 主列表 -->
-        <Grid Grid.Row="1">
-            <Grid.Style>
-                <Style TargetType="Grid">
-                    <Setter Property="Visibility" Value="Visible" />
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding IsSettingsVisible}" Value="True">
-                            <Setter Property="Visibility" Value="Collapsed" />
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </Grid.Style>
+        <Grid Margin="18,14,18,12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
 
-            <ListBox ItemsSource="{Binding Browsers}"
-                     BorderThickness="1"
-                     HorizontalContentAlignment="Stretch">
-                <ListBox.ItemTemplate>
-                    <DataTemplate DataType="{x:Type models:BrowserInfo}">
-                        <Grid Margin="4,6">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
+            <!-- 当前默认摘要卡 -->
+            <Border Grid.Row="0"
+                    Margin="0,0,0,14"
+                    Padding="16,14"
+                    Background="{StaticResource BrushBgPanel}"
+                    BorderBrush="{StaticResource BrushLineSubtle}"
+                    BorderThickness="1"
+                    CornerRadius="10">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsSettingsVisible}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <!-- 开关隐喻装饰 -->
+                    <Border Width="44"
+                            Height="24"
+                            CornerRadius="12"
+                            Background="{StaticResource BrushAccent}"
+                            VerticalAlignment="Center"
+                            Margin="0,0,14,0">
+                        <Ellipse Width="18"
+                                 Height="18"
+                                 Fill="White"
+                                 HorizontalAlignment="Right"
+                                 Margin="3" />
+                    </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="当前默认浏览器"
+                                   Foreground="{StaticResource BrushTextMuted}"
+                                   FontSize="12" />
+                        <TextBlock Margin="0,4,0,0"
+                                   FontSize="18"
+                                   FontWeight="SemiBold"
+                                   Text="{Binding CurrentDefaultDisplayName,
+                                            TargetNullValue=未识别}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
 
-                            <StackPanel Grid.Column="0" Orientation="Vertical">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{Binding DisplayName}"
-                                               FontSize="15"
-                                               FontWeight="SemiBold" />
-                                    <Border Margin="8,0,0,0"
-                                            Padding="6,1"
-                                            Background="#1F6FEB"
-                                            CornerRadius="3"
-                                            VerticalAlignment="Center">
-                                        <Border.Style>
-                                            <Style TargetType="Border">
-                                                <Setter Property="Visibility" Value="Collapsed" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsCurrentDefault}"
-                                                                 Value="True">
-                                                        <Setter Property="Visibility" Value="Visible" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Border.Style>
-                                        <TextBlock Text="当前"
-                                                   Foreground="White"
-                                                   FontSize="11" />
-                                    </Border>
-                                </StackPanel>
-                                <TextBlock Margin="0,2,0,0"
-                                           Opacity="0.85"
-                                           Text="{Binding StatusDisplay}" />
-                                <TextBlock Margin="0,2,0,0"
-                                           Opacity="0.7"
-                                           TextWrapping="Wrap"
-                                           Text="{Binding ExecutablePath,
-                                                    TargetNullValue=路径：无,
-                                                    StringFormat=路径：{0}}" />
-                            </StackPanel>
+            <!-- 主列表：卡片网格感 -->
+            <ScrollViewer Grid.Row="1"
+                          VerticalScrollBarVisibility="Auto">
+                <ScrollViewer.Style>
+                    <Style TargetType="ScrollViewer">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsSettingsVisible}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ScrollViewer.Style>
+                <ItemsControl ItemsSource="{Binding Browsers}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="2" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type models:BrowserInfo}">
+                            <Border Margin="0,0,12,12"
+                                    Padding="14"
+                                    Background="{StaticResource BrushBgPanel}"
+                                    BorderThickness="1"
+                                    CornerRadius="10"
+                                    MinHeight="132">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="BorderBrush"
+                                                Value="{StaticResource BrushLineSubtle}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsCurrentDefault}"
+                                                         Value="True">
+                                                <Setter Property="BorderBrush"
+                                                        Value="{StaticResource BrushAccent}" />
+                                                <Setter Property="Background"
+                                                        Value="{StaticResource BrushAccentSoft}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <StackPanel>
+                                        <DockPanel>
+                                            <Border DockPanel.Dock="Right"
+                                                    Padding="8,2"
+                                                    CornerRadius="4"
+                                                    Background="{StaticResource BrushAccent}"
+                                                    VerticalAlignment="Top">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsCurrentDefault}"
+                                                                         Value="True">
+                                                                <Setter Property="Visibility" Value="Visible" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <TextBlock Text="当前"
+                                                           Foreground="White"
+                                                           FontSize="11" />
+                                            </Border>
+                                            <TextBlock Text="{Binding DisplayName}"
+                                                       FontSize="16"
+                                                       FontWeight="SemiBold"
+                                                       TextWrapping="Wrap" />
+                                        </DockPanel>
+                                        <TextBlock Margin="0,8,0,0"
+                                                   Foreground="{StaticResource BrushTextMuted}"
+                                                   Text="{Binding StatusDisplay}" />
+                                        <TextBlock Margin="0,4,0,0"
+                                                   Foreground="{StaticResource BrushTextMuted}"
+                                                   Opacity="0.85"
+                                                   FontSize="11"
+                                                   TextWrapping="Wrap"
+                                                   Text="{Binding ExecutablePath,
+                                                            TargetNullValue=路径：无,
+                                                            StringFormat=路径：{0}}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="1"
+                                                Orientation="Horizontal"
+                                                HorizontalAlignment="Right"
+                                                Margin="0,12,0,0">
+                                        <Button Content="指定路径"
+                                                Style="{StaticResource GhostButton}"
+                                                Margin="0,0,8,0"
+                                                Tag="{Binding}"
+                                                Click="AssignPath_Click" />
+                                        <Button Content="设为默认"
+                                                Style="{StaticResource PrimaryButton}"
+                                                Command="{Binding DataContext.SetAsDefaultCommand,
+                                                    RelativeSource={RelativeSource AncestorType=Window}}"
+                                                CommandParameter="{Binding}" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
 
-                            <StackPanel Grid.Column="1"
-                                        Orientation="Horizontal"
-                                        VerticalAlignment="Center">
-                                <Button Content="打开系统设置"
-                                        Margin="0,0,8,0"
-                                        Padding="10,4"
-                                        Command="{Binding DataContext.SetAsDefaultCommand,
-                                            RelativeSource={RelativeSource AncestorType=Window}}"
-                                        CommandParameter="{Binding}" />
-                                <Button Content="指定路径"
-                                        Padding="10,4"
-                                        Tag="{Binding}"
-                                        Click="AssignPath_Click" />
-                            </StackPanel>
-                        </Grid>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
+            <views:SettingsView Grid.Row="0"
+                                Grid.RowSpan="2">
+                <views:SettingsView.Style>
+                    <Style TargetType="views:SettingsView">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsSettingsVisible}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </views:SettingsView.Style>
+            </views:SettingsView>
         </Grid>
-
-        <!-- 设置页 -->
-        <views:SettingsView Grid.Row="1">
-            <views:SettingsView.Style>
-                <Style TargetType="views:SettingsView">
-                    <Setter Property="Visibility" Value="Collapsed" />
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding IsSettingsVisible}" Value="True">
-                            <Setter Property="Visibility" Value="Visible" />
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </views:SettingsView.Style>
-        </views:SettingsView>
-
-        <!-- 底部操作栏 -->
-        <DockPanel Grid.Row="2" Margin="0,12,0,0" LastChildFill="True">
-            <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
-                <Button Content="刷新"
-                        Width="88"
-                        Margin="0,0,8,0"
-                        Padding="8,4"
-                        Command="{Binding RefreshCommand}" />
-                <Button Content="设置"
-                        Width="88"
-                        Padding="8,4"
-                        Command="{Binding OpenSettingsCommand}" />
-            </StackPanel>
-            <TextBlock Margin="16,0,0,0"
-                       VerticalAlignment="Center"
-                       TextWrapping="Wrap"
-                       Text="{Binding StatusMessage}" />
-        </DockPanel>
-    </Grid>
+    </DockPanel>
 </Window>

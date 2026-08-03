@@ -4,8 +4,13 @@
              xmlns:tb="http://www.hardcodet.net/taskbar"
              ShutdownMode="OnExplicitShutdown">
     <Application.Resources>
-        <tb:TaskbarIcon x:Key="TrayIcon"
-                        ToolTipText="浏览器切换器"
-                        Visibility="Visible" />
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Themes/AppTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <tb:TaskbarIcon x:Key="TrayIcon"
+                            ToolTipText="浏览器切换器"
+                            Visibility="Visible" />
+        </ResourceDictionary>
     </Application.Resources>
 </Application>

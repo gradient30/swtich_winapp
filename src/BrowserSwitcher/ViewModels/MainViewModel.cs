@@ -19,6 +19,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private readonly SettingsLauncher _settingsLauncher;
     private readonly StartupRegistration _startupRegistration;
     private readonly DefaultBrowserResolver _defaultBrowserResolver;
+    private readonly DefaultBrowserSwitcher _browserSwitcher;
     private string _statusMessage = string.Empty;
     private string _currentDefaultSummary = "当前默认浏览器：检测中…";
     private bool _isSettingsVisible;
@@ -34,24 +35,21 @@ public sealed class MainViewModel : INotifyPropertyChanged
             new BrowserDetector(),
             new SettingsLauncher(),
             new StartupRegistration(),
-            new DefaultBrowserResolver())
+            new DefaultBrowserResolver(),
+            null)
     {
     }
 
     /// <summary>
     /// 注入依赖，便于测试。
     /// </summary>
-    /// <param name="configStore">配置读写。</param>
-    /// <param name="detector">浏览器检测。</param>
-    /// <param name="settingsLauncher">系统默认应用设置页启动器。</param>
-    /// <param name="startupRegistration">开机启动注册。</param>
-    /// <param name="defaultBrowserResolver">当前默认浏览器解析。</param>
     public MainViewModel(
         ConfigStore configStore,
         BrowserDetector detector,
         SettingsLauncher settingsLauncher,
         StartupRegistration startupRegistration,
-        DefaultBrowserResolver? defaultBrowserResolver = null)
+        DefaultBrowserResolver? defaultBrowserResolver = null,
+        DefaultBrowserSwitcher? browserSwitcher = null)
     {
         _configStore = configStore
             ?? throw new ArgumentNullException(nameof(configStore));
@@ -63,6 +61,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
             ?? throw new ArgumentNullException(nameof(startupRegistration));
         _defaultBrowserResolver = defaultBrowserResolver
                                   ?? new DefaultBrowserResolver();
+        _browserSwitcher = browserSwitcher
+                           ?? new DefaultBrowserSwitcher(
+                               _settingsLauncher,
+                               _defaultBrowserResolver);
 
         AppVersion = ResolveAppVersion();
 
@@ -214,7 +216,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     }
 
     /// <summary>
-    /// 打开系统默认应用设置页，并提示用户选择对应浏览器。
+    /// 尝试将指定浏览器设为默认（静默优先，失败回退系统设置）。
     /// </summary>
     /// <param name="browser">目标浏览器。</param>
     public void SetAsDefault(BrowserInfo browser)
@@ -223,19 +225,50 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         try
         {
-            _settingsLauncher.OpenDefaultApps();
-            StatusMessage = $"请在打开的设置中选择：{browser.DisplayName}";
+            var result = _browserSwitcher.Switch(browser, Browsers.ToList());
+            StatusMessage = result.Message;
+            if (result.IsSilentSuccess
+                || result.Outcome == BrowserSwitchOutcome.AlreadyDefault)
+            {
+                Refresh();
+            }
+            else if (result.Outcome == BrowserSwitchOutcome.FallbackToSettings)
+            {
+                // 设置页已由 Switcher 打开；稍后再刷新以反映用户操作
+                Refresh();
+            }
         }
         catch (Exception ex)
         {
-            StatusMessage = $"无法打开系统设置：{ex.Message}";
-            MessageBox.Show(
-                $"无法打开系统默认应用设置页。\n\n{ex.Message}\n\n"
-                + "请手动打开：设置 → 应用 → 默认应用。",
-                "浏览器切换器",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning);
+            StatusMessage = $"切换失败：{ex.Message}";
+            try
+            {
+                _settingsLauncher.OpenDefaultApps();
+                StatusMessage =
+                    $"切换失败，已打开系统设置。请手动选择：{browser.DisplayName}";
+            }
+            catch (Exception openEx)
+            {
+                StatusMessage = $"无法打开系统设置：{openEx.Message}";
+                MessageBox.Show(
+                    $"无法打开系统默认应用设置页。\n\n{openEx.Message}\n\n"
+                    + "请手动打开：设置 → 应用 → 默认应用。",
+                    "浏览器切换器",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
         }
+    }
+
+    /// <summary>
+    /// 托盘快捷切换：非当前浏览器时尝试直切。
+    /// </summary>
+    /// <param name="browser">目标浏览器。</param>
+    /// <returns>面向用户的结果说明。</returns>
+    public string SwitchFromTray(BrowserInfo browser)
+    {
+        SetAsDefault(browser);
+        return StatusMessage;
     }
 
     /// <summary>

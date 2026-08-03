@@ -1,10 +1,11 @@
-﻿using BrowserSwitcher.Helpers;
+﻿using System.Drawing;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
+using BrowserSwitcher.Helpers;
 using BrowserSwitcher.Models;
 using BrowserSwitcher.ViewModels;
 using Hardcodet.Wpf.TaskbarNotification;
-using System.Drawing;
-using System.Windows;
-using System.Windows.Controls;
 
 namespace BrowserSwitcher;
 
@@ -88,16 +89,39 @@ public partial class App : Application
     private void InitializeTrayIcon()
     {
         _trayIcon = (TaskbarIcon)FindResource("TrayIcon");
-        _trayIconHandle = (Icon)SystemIcons.Application.Clone();
+        _trayIconHandle = LoadTrayIcon() ?? (Icon)SystemIcons.Application.Clone();
         _trayIcon.Icon = _trayIconHandle;
         UpdateTrayTooltip();
         _trayIcon.TrayLeftMouseUp += (_, _) => ToggleMainWindow();
-        // 自行弹出菜单并锚定到光标，避免多屏下 ContextMenu 错位
         _trayIcon.TrayRightMouseUp += (_, _) => ShowTrayContextMenu();
     }
 
     /// <summary>
-    /// 在托盘图标旁（当前光标位置）弹出右键菜单。
+    /// 加载嵌入的切换开关图标。
+    /// </summary>
+    private static Icon? LoadTrayIcon()
+    {
+        try
+        {
+            var uri = new Uri(
+                "pack://application:,,,/Resources/tray.ico",
+                UriKind.Absolute);
+            var streamInfo = GetResourceStream(uri);
+            if (streamInfo?.Stream == null)
+            {
+                return null;
+            }
+
+            return new Icon(streamInfo.Stream);
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// 在托盘图标旁弹出右键菜单。
     /// </summary>
     private void ShowTrayContextMenu()
     {
@@ -106,7 +130,6 @@ public partial class App : Application
             return;
         }
 
-        // 打开菜单前刷新，保证「当前默认」标记最新
         _viewModel.Refresh();
         UpdateTrayTooltip();
 
@@ -116,13 +139,15 @@ public partial class App : Application
         {
             var header = browser.IsCurrentDefault
                 ? $"{browser.DisplayName}（当前）"
-                : browser.DisplayName;
+                : $"切换到 {browser.DisplayName}";
             var item = new MenuItem
             {
                 Header = header,
                 Tag = browser,
                 IsChecked = browser.IsCurrentDefault,
-                IsCheckable = browser.IsCurrentDefault
+                IsCheckable = browser.IsCurrentDefault,
+                IsEnabled = browser.Status != BrowserStatus.NotFound
+                            || browser.IsCurrentDefault
             };
             item.Click += BrowserMenuItem_Click;
             menu.Items.Add(item);
@@ -141,14 +166,10 @@ public partial class App : Application
         exitItem.Click += (_, _) => ExitApplication();
         menu.Items.Add(exitItem);
 
-        // 不挂到 TaskbarIcon.ContextMenu，避免库内定位跑到其他显示器
         _trayIcon.ContextMenu = null;
         TrayContextMenuPresenter.ShowNearCursor(menu, _mainWindow);
     }
 
-    /// <summary>
-    /// 更新托盘悬停提示，包含当前默认浏览器。
-    /// </summary>
     private void UpdateTrayTooltip()
     {
         if (_trayIcon == null)
@@ -166,22 +187,36 @@ public partial class App : Application
         }
     }
 
-    /// <summary>
-    /// 托盘菜单中选择浏览器：打开系统默认应用设置页。
-    /// </summary>
     private void BrowserMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is MenuItem { Tag: BrowserInfo browser }
-            && _viewModel != null)
+        if (sender is not MenuItem { Tag: BrowserInfo browser }
+            || _viewModel == null)
         {
-            _viewModel.SetAsDefault(browser);
+            return;
+        }
+
+        if (browser.IsCurrentDefault)
+        {
+            ShowMainWindow();
+            return;
+        }
+
+        _viewModel.SwitchFromTray(browser);
+        UpdateTrayTooltip();
+
+        if (_viewModel.Browsers.Any(b => b.Id == browser.Id && b.IsCurrentDefault))
+        {
+            _trayIcon?.ShowBalloonTip(
+                "浏览器切换器",
+                $"已切换为 {browser.DisplayName}",
+                BalloonIcon.Info);
+        }
+        else
+        {
             ShowMainWindow();
         }
     }
 
-    /// <summary>
-    /// 切换主窗口显示/隐藏。
-    /// </summary>
     private void ToggleMainWindow()
     {
         if (_mainWindow == null)
@@ -199,9 +234,6 @@ public partial class App : Application
         }
     }
 
-    /// <summary>
-    /// 显示并激活主窗口。
-    /// </summary>
     private void ShowMainWindow()
     {
         if (_isExiting
@@ -230,9 +262,6 @@ public partial class App : Application
         _mainWindow.Focus();
     }
 
-    /// <summary>
-    /// 真正退出：允许关窗、释放 Mutex、销毁托盘并关闭应用。
-    /// </summary>
     private void ExitApplication()
     {
         if (_isExiting)
@@ -252,9 +281,6 @@ public partial class App : Application
         Shutdown();
     }
 
-    /// <summary>
-    /// 释放托盘图标与单实例资源。
-    /// </summary>
     private void CleanupTrayAndSingleInstance()
     {
         if (_trayIcon != null)
