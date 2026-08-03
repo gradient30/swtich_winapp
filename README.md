@@ -21,7 +21,7 @@ dotnet run --project src/BrowserSwitcher
 
 ```powershell
 # 将 1.1.0 换成当前 Version
-$ver = "1.1.0"
+$ver = "1.2.0"
 $out = "dist\BrowserSwitcher-$ver-win-x64"
 dotnet publish src/BrowserSwitcher/BrowserSwitcher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o $out
 Compress-Archive -Path "$out\BrowserSwitcher.exe" -DestinationPath "dist\BrowserSwitcher-$ver-win-x64.zip" -Force

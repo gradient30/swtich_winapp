@@ -11,11 +11,12 @@
         Width="760"
         MinHeight="420"
         MinWidth="640"
-        Background="{StaticResource BrushBgDeep}"
+        Background="{DynamicResource BrushBgDeep}"
+        Foreground="{DynamicResource BrushTextPrimary}"
         Closing="Window_Closing">
     <DockPanel>
         <!-- 顶部菜单栏：设置可扩展下拉 -->
-        <Menu DockPanel.Dock="Top" Style="{StaticResource MenuBarStyle}">
+        <Menu DockPanel.Dock="Top" Style="{DynamicResource MenuBarStyle}">
             <MenuItem Header="设置(_S)">
                 <MenuItem Header="偏好设置…"
                           Command="{Binding OpenSettingsCommand}" />
@@ -24,6 +25,15 @@
             <MenuItem Header="视图(_V)">
                 <MenuItem Header="刷新列表"
                           Command="{Binding RefreshCommand}" />
+                <Separator />
+                <MenuItem Header="深色模式"
+                          IsCheckable="True"
+                          IsChecked="{Binding IsDarkTheme}"
+                          Command="{Binding SetDarkThemeCommand}" />
+                <MenuItem Header="浅色模式"
+                          IsCheckable="True"
+                          IsChecked="{Binding IsLightTheme}"
+                          Command="{Binding SetLightThemeCommand}" />
             </MenuItem>
             <MenuItem Header="帮助(_H)">
                 <MenuItem Header="关于与更新说明…"
@@ -31,14 +41,14 @@
             </MenuItem>
         </Menu>
 
-        <Border DockPanel.Dock="Bottom" Style="{StaticResource StatusBarStyle}">
+        <Border DockPanel.Dock="Bottom" Style="{DynamicResource StatusBarStyle}">
             <DockPanel LastChildFill="True">
                 <StackPanel DockPanel.Dock="Right"
                             Orientation="Horizontal"
                             VerticalAlignment="Center"
                             Margin="12,0,0,0">
                     <TextBlock VerticalAlignment="Center"
-                               Foreground="{StaticResource BrushTextMuted}"
+                               Foreground="{DynamicResource BrushTextMuted}"
                                Margin="0,0,8,0"
                                Text="{Binding AppVersion, StringFormat=v{0}}" />
                     <Button Content="?"
@@ -46,17 +56,17 @@
                             Height="30"
                             FontWeight="SemiBold"
                             ToolTip="作用说明与本次更新"
-                            Style="{StaticResource GhostButton}"
+                            Style="{DynamicResource GhostButton}"
                             Padding="0"
                             Command="{Binding ShowHelpCommand}" />
                 </StackPanel>
                 <Button DockPanel.Dock="Left"
                         Content="刷新"
-                        Style="{StaticResource GhostButton}"
+                        Style="{DynamicResource GhostButton}"
                         Margin="0,0,12,0"
                         Command="{Binding RefreshCommand}" />
                 <TextBlock VerticalAlignment="Center"
-                           Foreground="{StaticResource BrushTextMuted}"
+                           Foreground="{DynamicResource BrushTextMuted}"
                            TextWrapping="Wrap"
                            Text="{Binding StatusMessage}" />
             </DockPanel>
@@ -72,8 +82,8 @@
             <Border Grid.Row="0"
                     Margin="0,0,0,14"
                     Padding="16,14"
-                    Background="{StaticResource BrushBgPanel}"
-                    BorderBrush="{StaticResource BrushLineSubtle}"
+                    Background="{DynamicResource BrushBgPanel}"
+                    BorderBrush="{DynamicResource BrushLineSubtle}"
                     BorderThickness="1"
                     CornerRadius="10">
                 <Border.Style>
@@ -91,33 +101,32 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <!-- 开关隐喻装饰 -->
                     <Border Width="44"
                             Height="24"
                             CornerRadius="12"
-                            Background="{StaticResource BrushAccent}"
+                            Background="{DynamicResource BrushAccent}"
                             VerticalAlignment="Center"
                             Margin="0,0,14,0">
                         <Ellipse Width="18"
                                  Height="18"
-                                 Fill="White"
+                                 Fill="{DynamicResource BrushOnAccent}"
                                  HorizontalAlignment="Right"
                                  Margin="3" />
                     </Border>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock Text="当前默认浏览器"
-                                   Foreground="{StaticResource BrushTextMuted}"
+                                   Foreground="{DynamicResource BrushTextMuted}"
                                    FontSize="12" />
                         <TextBlock Margin="0,4,0,0"
                                    FontSize="18"
                                    FontWeight="SemiBold"
+                                   Foreground="{DynamicResource BrushTextPrimary}"
                                    Text="{Binding CurrentDefaultDisplayName,
                                             TargetNullValue=未识别}" />
                     </StackPanel>
                 </Grid>
             </Border>
 
-            <!-- 主列表：卡片网格感 -->
             <ScrollViewer Grid.Row="1"
                           VerticalScrollBarVisibility="Auto">
                 <ScrollViewer.Style>
@@ -140,21 +149,21 @@
                         <DataTemplate DataType="{x:Type models:BrowserInfo}">
                             <Border Margin="0,0,12,12"
                                     Padding="14"
-                                    Background="{StaticResource BrushBgPanel}"
+                                    Background="{DynamicResource BrushBgPanel}"
                                     BorderThickness="1"
                                     CornerRadius="10"
                                     MinHeight="132">
                                 <Border.Style>
                                     <Style TargetType="Border">
                                         <Setter Property="BorderBrush"
-                                                Value="{StaticResource BrushLineSubtle}" />
+                                                Value="{DynamicResource BrushLineSubtle}" />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding IsCurrentDefault}"
                                                          Value="True">
                                                 <Setter Property="BorderBrush"
-                                                        Value="{StaticResource BrushAccent}" />
+                                                        Value="{DynamicResource BrushAccent}" />
                                                 <Setter Property="Background"
-                                                        Value="{StaticResource BrushAccentSoft}" />
+                                                        Value="{DynamicResource BrushAccentSoft}" />
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
@@ -169,7 +178,7 @@
                                             <Border DockPanel.Dock="Right"
                                                     Padding="8,2"
                                                     CornerRadius="4"
-                                                    Background="{StaticResource BrushAccent}"
+                                                    Background="{DynamicResource BrushAccent}"
                                                     VerticalAlignment="Top">
                                                 <Border.Style>
                                                     <Style TargetType="Border">
@@ -183,19 +192,20 @@
                                                     </Style>
                                                 </Border.Style>
                                                 <TextBlock Text="当前"
-                                                           Foreground="White"
+                                                           Foreground="{DynamicResource BrushOnAccent}"
                                                            FontSize="11" />
                                             </Border>
                                             <TextBlock Text="{Binding DisplayName}"
                                                        FontSize="16"
                                                        FontWeight="SemiBold"
-                                                       TextWrapping="Wrap" />
+                                                       TextWrapping="Wrap"
+                                                       Foreground="{DynamicResource BrushTextPrimary}" />
                                         </DockPanel>
                                         <TextBlock Margin="0,8,0,0"
-                                                   Foreground="{StaticResource BrushTextMuted}"
+                                                   Foreground="{DynamicResource BrushTextMuted}"
                                                    Text="{Binding StatusDisplay}" />
                                         <TextBlock Margin="0,4,0,0"
-                                                   Foreground="{StaticResource BrushTextMuted}"
+                                                   Foreground="{DynamicResource BrushTextMuted}"
                                                    Opacity="0.85"
                                                    FontSize="11"
                                                    TextWrapping="Wrap"
@@ -208,12 +218,12 @@
                                                 HorizontalAlignment="Right"
                                                 Margin="0,12,0,0">
                                         <Button Content="指定路径"
-                                                Style="{StaticResource GhostButton}"
+                                                Style="{DynamicResource GhostButton}"
                                                 Margin="0,0,8,0"
                                                 Tag="{Binding}"
                                                 Click="AssignPath_Click" />
                                         <Button Content="设为默认"
-                                                Style="{StaticResource PrimaryButton}"
+                                                Style="{DynamicResource PrimaryButton}"
                                                 Command="{Binding DataContext.SetAsDefaultCommand,
                                                     RelativeSource={RelativeSource AncestorType=Window}}"
                                                 CommandParameter="{Binding}" />

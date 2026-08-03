@@ -6,9 +6,9 @@
              mc:Ignorable="d"
              d:DesignHeight="400"
              d:DesignWidth="600"
-             Background="{StaticResource BrushBgDeep}">
-    <Border Background="{StaticResource BrushBgPanel}"
-            BorderBrush="{StaticResource BrushLineSubtle}"
+             Background="{DynamicResource BrushBgDeep}">
+    <Border Background="{DynamicResource BrushBgPanel}"
+            BorderBrush="{DynamicResource BrushLineSubtle}"
             BorderThickness="1"
             CornerRadius="10"
             Padding="18">
@@ -23,20 +23,22 @@
             <DockPanel Grid.Row="0" Margin="0,0,0,14">
                 <Button DockPanel.Dock="Right"
                         Content="返回"
-                        Style="{StaticResource GhostButton}"
+                        Style="{DynamicResource GhostButton}"
                         Command="{Binding BackToMainCommand}" />
                 <TextBlock Text="偏好设置"
                            FontSize="20"
                            FontWeight="SemiBold"
+                           Foreground="{DynamicResource BrushTextPrimary}"
                            VerticalAlignment="Center" />
             </DockPanel>
 
             <DockPanel Grid.Row="1" LastChildFill="True">
                 <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
                     <TextBlock Text="手动路径"
-                               FontWeight="SemiBold" />
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource BrushTextPrimary}" />
                     <TextBlock Margin="0,4,0,0"
-                               Foreground="{StaticResource BrushTextMuted}"
+                               Foreground="{DynamicResource BrushTextMuted}"
                                TextWrapping="Wrap"
                                Text="编辑已保存路径；清空路径并保存即可删除。后续可在「设置」菜单继续扩展更多能力。" />
                 </StackPanel>
@@ -47,7 +49,7 @@
                             <DataTemplate>
                                 <Border Margin="0,0,0,8"
                                         Padding="10"
-                                        Background="{StaticResource BrushBgElevated}"
+                                        Background="{DynamicResource BrushBgElevated}"
                                         CornerRadius="8">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -57,20 +59,18 @@
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Grid.Column="0"
                                                    Text="{Binding DisplayName}"
+                                                   Foreground="{DynamicResource BrushTextPrimary}"
                                                    VerticalAlignment="Center"
                                                    TextWrapping="Wrap" />
                                         <TextBox Grid.Column="1"
                                                  Margin="8,0,8,0"
                                                  Padding="8,6"
-                                                 Background="{StaticResource BrushBgDeep}"
-                                                 Foreground="{StaticResource BrushTextPrimary}"
-                                                 BorderBrush="{StaticResource BrushLineSubtle}"
                                                  VerticalContentAlignment="Center"
                                                  Text="{Binding Path=Path,
                                                     UpdateSourceTrigger=PropertyChanged}" />
                                         <Button Grid.Column="2"
                                                 Content="移除"
-                                                Style="{StaticResource GhostButton}"
+                                                Style="{DynamicResource GhostButton}"
                                                 Command="{Binding DataContext.RemoveManualPathCommand,
                                                     RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                 CommandParameter="{Binding}" />
@@ -85,14 +85,13 @@
             <StackPanel Grid.Row="2" Margin="0,12,0,0">
                 <Button Content="保存手动路径"
                         HorizontalAlignment="Left"
-                        Style="{StaticResource PrimaryButton}"
+                        Style="{DynamicResource PrimaryButton}"
                         Command="{Binding SaveManualPathsCommand}" />
                 <CheckBox Margin="0,14,0,0"
                           Content="开机启动"
-                          Foreground="{StaticResource BrushTextPrimary}"
                           IsChecked="{Binding StartWithWindows}" />
                 <TextBlock Margin="0,12,0,0"
-                           Foreground="{StaticResource BrushTextMuted}"
+                           Foreground="{DynamicResource BrushTextMuted}"
                            Text="{Binding AppVersion, StringFormat=版本：{0}}" />
             </StackPanel>
         </Grid>

@@ -26,6 +26,17 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        // 尽早应用主题，避免首帧菜单/正文对比度错误
+        try
+        {
+            var theme = new Services.ConfigStore().Load().Theme;
+            new Services.ThemeService().Apply(theme);
+        }
+        catch (Exception)
+        {
+            new Services.ThemeService().Apply(Services.ThemeService.Dark);
+        }
+
         try
         {
             _singleInstance = SingleInstance.Create();
@@ -134,6 +145,15 @@ public partial class App : Application
         UpdateTrayTooltip();
 
         var menu = new ContextMenu();
+        if (TryFindResource("BrushBgElevated") is System.Windows.Media.Brush menuBg)
+        {
+            menu.Background = menuBg;
+        }
+
+        if (TryFindResource("BrushTextPrimary") is System.Windows.Media.Brush menuFg)
+        {
+            menu.Foreground = menuFg;
+        }
 
         foreach (BrowserInfo browser in _viewModel.Browsers)
         {

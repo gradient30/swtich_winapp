@@ -20,8 +20,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private readonly StartupRegistration _startupRegistration;
     private readonly DefaultBrowserResolver _defaultBrowserResolver;
     private readonly DefaultBrowserSwitcher _browserSwitcher;
+    private readonly ThemeService _themeService;
     private string _statusMessage = string.Empty;
     private string _currentDefaultSummary = "当前默认浏览器：检测中…";
+    private string _theme = ThemeService.Dark;
     private bool _isSettingsVisible;
     private bool _startWithWindows;
     private bool _suppressStartupApply;
@@ -36,7 +38,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
             new SettingsLauncher(),
             new StartupRegistration(),
             new DefaultBrowserResolver(),
-            null)
+            null,
+            new ThemeService())
     {
     }
 
@@ -49,7 +52,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         SettingsLauncher settingsLauncher,
         StartupRegistration startupRegistration,
         DefaultBrowserResolver? defaultBrowserResolver = null,
-        DefaultBrowserSwitcher? browserSwitcher = null)
+        DefaultBrowserSwitcher? browserSwitcher = null,
+        ThemeService? themeService = null)
     {
         _configStore = configStore
             ?? throw new ArgumentNullException(nameof(configStore));
@@ -65,8 +69,11 @@ public sealed class MainViewModel : INotifyPropertyChanged
                            ?? new DefaultBrowserSwitcher(
                                _settingsLauncher,
                                _defaultBrowserResolver);
+        _themeService = themeService ?? new ThemeService();
 
         AppVersion = ResolveAppVersion();
+        _theme = ThemeService.Normalize(_configStore.Load().Theme);
+        _themeService.Apply(_theme);
 
         RefreshCommand = new RelayCommand(_ => Refresh());
         SetAsDefaultCommand = new RelayCommand(
@@ -89,6 +96,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
                 }
             });
         ShowHelpCommand = new RelayCommand(_ => ShowHelp());
+        SetDarkThemeCommand = new RelayCommand(_ => SetTheme(ThemeService.Dark));
+        SetLightThemeCommand = new RelayCommand(_ => SetTheme(ThemeService.Light));
     }
 
     /// <summary>当前检测到的浏览器列表。</summary>
@@ -165,6 +174,20 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     /// <summary>打开帮助（作用说明 + 本次更新）。</summary>
     public ICommand ShowHelpCommand { get; }
+
+    /// <summary>切换到深色主题。</summary>
+    public ICommand SetDarkThemeCommand { get; }
+
+    /// <summary>切换到浅色主题。</summary>
+    public ICommand SetLightThemeCommand { get; }
+
+    /// <summary>当前是否深色主题（菜单勾选）。</summary>
+    public bool IsDarkTheme =>
+        ThemeService.Normalize(_theme) == ThemeService.Dark;
+
+    /// <summary>当前是否浅色主题（菜单勾选）。</summary>
+    public bool IsLightTheme =>
+        ThemeService.Normalize(_theme) == ThemeService.Light;
 
     /// <summary>
     /// 加载配置、检测浏览器并更新集合。
@@ -319,6 +342,26 @@ public sealed class MainViewModel : INotifyPropertyChanged
             Owner = Application.Current?.MainWindow
         };
         window.ShowDialog();
+    }
+
+    private void SetTheme(string theme)
+    {
+        _theme = ThemeService.Normalize(theme);
+        _themeService.Apply(_theme);
+        OnPropertyChanged(nameof(IsDarkTheme));
+        OnPropertyChanged(nameof(IsLightTheme));
+
+        try
+        {
+            var config = _configStore.Load();
+            config.Theme = _theme;
+            _configStore.Save(config);
+            StatusMessage = IsDarkTheme ? "已切换为深色模式" : "已切换为浅色模式";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"保存主题失败：{ex.Message}";
+        }
     }
 
     private void LoadSettings()

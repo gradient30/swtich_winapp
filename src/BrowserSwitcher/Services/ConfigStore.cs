@@ -51,6 +51,11 @@ public sealed class ConfigStore
             var config = JsonSerializer.Deserialize<AppConfig>(json, JsonOptions)
                          ?? new AppConfig();
             config.ManualPaths ??= new Dictionary<string, string>();
+            if (string.IsNullOrWhiteSpace(config.Theme))
+            {
+                config.Theme = "Dark";
+            }
+
             return config;
         }
         catch (JsonException)
