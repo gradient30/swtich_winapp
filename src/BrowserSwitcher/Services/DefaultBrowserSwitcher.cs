@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
 using BrowserSwitcher.Models;
 using Microsoft.Win32;
@@ -6,7 +7,12 @@ using Microsoft.Win32;
 namespace BrowserSwitcher.Services;
 
 /// <summary>
-/// 尝试将指定浏览器设为系统默认；失败时回退打开系统设置页。
+/// 按官方与社区可行路径切换默认浏览器。
+/// 说明：Windows 8+ 起微软要求经系统 UI 确认；2024 起 UCPD.sys
+/// 会拦截对 UserChoice 的第三方写入。因此本实现优先：
+/// 1) 可选社区工具 SetDefaultBrowser（若本机已安装）
+/// 2) 旧版 COM SetAppAsDefault（多数新系统会失败）
+/// 3) LaunchAdvancedAssociationUI / ms-settings 深链（官方推荐，一页一点确认）
 /// </summary>
 public sealed class DefaultBrowserSwitcher
 {
@@ -14,6 +20,8 @@ public sealed class DefaultBrowserSwitcher
     private readonly DefaultBrowserResolver _defaultBrowserResolver;
     private readonly Func<string, string?> _findRegisteredAppName;
     private readonly Func<string, bool> _trySetAppAsDefault;
+    private readonly Func<string, bool> _tryExternalSetDefaultBrowser;
+    private readonly Func<string, bool> _tryLaunchAssociationUi;
 
     /// <summary>
     /// 使用真实系统 API。
@@ -25,7 +33,9 @@ public sealed class DefaultBrowserSwitcher
             settingsLauncher ?? new SettingsLauncher(),
             defaultBrowserResolver ?? new DefaultBrowserResolver(),
             FindRegisteredAppName,
-            TrySetAppAsDefaultViaCom)
+            TrySetAppAsDefaultViaCom,
+            TryExternalSetDefaultBrowser,
+            TryLaunchAdvancedAssociationUi)
     {
     }
 
@@ -36,7 +46,9 @@ public sealed class DefaultBrowserSwitcher
         SettingsLauncher settingsLauncher,
         DefaultBrowserResolver defaultBrowserResolver,
         Func<string, string?> findRegisteredAppName,
-        Func<string, bool> trySetAppAsDefault)
+        Func<string, bool> trySetAppAsDefault,
+        Func<string, bool>? tryExternalSetDefaultBrowser = null,
+        Func<string, bool>? tryLaunchAssociationUi = null)
     {
         _settingsLauncher = settingsLauncher
             ?? throw new ArgumentNullException(nameof(settingsLauncher));
@@ -46,14 +58,15 @@ public sealed class DefaultBrowserSwitcher
             ?? throw new ArgumentNullException(nameof(findRegisteredAppName));
         _trySetAppAsDefault = trySetAppAsDefault
             ?? throw new ArgumentNullException(nameof(trySetAppAsDefault));
+        _tryExternalSetDefaultBrowser = tryExternalSetDefaultBrowser
+                                        ?? (_ => false);
+        _tryLaunchAssociationUi = tryLaunchAssociationUi
+                                  ?? (_ => false);
     }
 
     /// <summary>
-    /// 构建指向某已注册应用的默认应用设置深链。
+    /// 构建指向某已注册应用的默认应用设置深链（微软官方文档推荐）。
     /// </summary>
-    /// <param name="registeredName">RegisteredApplications 名称。</param>
-    /// <param name="perUser">true 使用 registeredAppUser，否则 registeredAppMachine。</param>
-    /// <returns>ms-settings URI。</returns>
     public static string BuildDeepLink(string registeredName, bool perUser)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(registeredName);
@@ -65,11 +78,24 @@ public sealed class DefaultBrowserSwitcher
     }
 
     /// <summary>
+    /// 社区工具 SetDefaultBrowser 命令行参数（按浏览器 Id）。
+    /// 快捷参数仅官方提供 chrome/ie/edge；Brave 用 HKLM Brave。
+    /// </summary>
+    public static string? BuildSetDefaultBrowserArgument(string browserId)
+    {
+        return browserId switch
+        {
+            "chrome" => "chrome",
+            "edge" => "edge",
+            "brave" => "HKLM Brave",
+            "ie" => "ie",
+            _ => null
+        };
+    }
+
+    /// <summary>
     /// 尝试切换默认浏览器。
     /// </summary>
-    /// <param name="browser">目标浏览器。</param>
-    /// <param name="knownBrowsers">当前列表，用于切换后校验。</param>
-    /// <returns>切换结果。</returns>
     public BrowserSwitchResult Switch(
         BrowserInfo browser,
         IReadOnlyList<BrowserInfo> knownBrowsers)
@@ -88,38 +114,60 @@ public sealed class DefaultBrowserSwitcher
             _settingsLauncher.OpenDefaultApps();
             return BrowserSwitchResult.FallbackToSettings(
                 browser.DisplayName,
-                "未找到该浏览器可执行文件，已打开系统设置。");
+                "未找到该浏览器，已打开系统默认应用页。");
         }
 
         var registeredName = _findRegisteredAppName(browser.Id)
                              ?? GuessRegisteredName(browser);
 
-        // 1) 尝试 COM 静默设为默认
-        if (!string.IsNullOrWhiteSpace(registeredName)
-            && _trySetAppAsDefault(registeredName))
+        // 1) 本机若已安装社区工具 SetDefaultBrowser，优先尝试真正直切
+        if (_tryExternalSetDefaultBrowser(browser.Id))
         {
-            var currentId = _defaultBrowserResolver.ResolveCurrentDefaultId(
+            var afterExternal = _defaultBrowserResolver.ResolveCurrentDefaultId(
                 knownBrowsers);
-            if (currentId == browser.Id)
+            if (afterExternal == browser.Id)
             {
                 return BrowserSwitchResult.Switched(browser.DisplayName);
             }
         }
 
-        // 2) 深链到该应用的默认应用页（比总页更近一步）
+        // 2) 旧系统 COM（Win8+ 起官方已废弃写入；新系统多半被 UCPD 拦住）
+        if (!string.IsNullOrWhiteSpace(registeredName)
+            && _trySetAppAsDefault(registeredName))
+        {
+            var afterCom = _defaultBrowserResolver.ResolveCurrentDefaultId(
+                knownBrowsers);
+            if (afterCom == browser.Id)
+            {
+                return BrowserSwitchResult.Switched(browser.DisplayName);
+            }
+        }
+
+        // 3) 官方路径 A：该应用的关联设置 UI（一点「设为默认」）
+        if (!string.IsNullOrWhiteSpace(registeredName)
+            && _tryLaunchAssociationUi(registeredName!))
+        {
+            return BrowserSwitchResult.FallbackToSettings(
+                browser.DisplayName,
+                $"已打开「{browser.DisplayName}」的系统关联页，请点击设为默认。"
+                + "（系统禁止第三方静默改默认浏览器）");
+        }
+
+        // 4) 官方路径 B：Win11 深链到该应用默认应用页（微软文档）
         if (!string.IsNullOrWhiteSpace(registeredName)
             && TryOpenDeepLink(registeredName!))
         {
             return BrowserSwitchResult.FallbackToSettings(
                 browser.DisplayName,
-                $"无法静默切换，已打开「{browser.DisplayName}」的系统默认应用页，请点一次确认。");
+                $"已打开「{browser.DisplayName}」设置页，请点一次「设为默认」。"
+                + "（这是微软允许的系统级入口）");
         }
 
-        // 3) 总页回退
+        // 5) 总页回退
         _settingsLauncher.OpenDefaultApps();
         return BrowserSwitchResult.FallbackToSettings(
             browser.DisplayName,
-            $"无法静默切换，已打开系统默认应用页，请选择：{browser.DisplayName}");
+            $"已打开系统默认应用页，请选择：{browser.DisplayName}");
     }
 
     private static string GuessRegisteredName(BrowserInfo browser)
@@ -136,6 +184,7 @@ public sealed class DefaultBrowserSwitcher
 
     private static bool TryOpenDeepLink(string registeredName)
     {
+        // 机器级安装更常见，先 Machine 再 User（与微软示例一致）
         foreach (var perUser in new[] { false, true })
         {
             try
@@ -150,11 +199,116 @@ public sealed class DefaultBrowserSwitcher
             }
             catch (Exception)
             {
-                // 尝试另一种注册范围
+                // 换另一种注册范围
             }
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// 查找本机 SetDefaultBrowser.exe（社区工具，不随本应用分发）。
+    /// 仅扫描程序目录，避免 PATH 劫持。
+    /// </summary>
+    internal static string? FindSetDefaultBrowserExecutable()
+    {
+        var baseDir = AppContext.BaseDirectory;
+        var candidates = new[]
+        {
+            Path.Combine(baseDir, "Tools", "SetDefaultBrowser.exe"),
+            Path.Combine(baseDir, "SetDefaultBrowser.exe")
+        };
+
+        return candidates.FirstOrDefault(File.Exists);
+    }
+
+    private static bool TryExternalSetDefaultBrowser(string browserId)
+    {
+        var arg = BuildSetDefaultBrowserArgument(browserId);
+        var exe = FindSetDefaultBrowserExecutable();
+        if (arg is null || exe is null)
+        {
+            return false;
+        }
+
+        try
+        {
+            // 不重定向标准流，避免管道塞满导致 WaitForExit 死锁；
+            // 超时则结束子进程，避免与后续系统 UI 竞态。
+            using var process = Process.Start(new ProcessStartInfo
+            {
+                FileName = exe,
+                Arguments = arg,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            });
+            if (process == null)
+            {
+                return false;
+            }
+
+            if (!process.WaitForExit(5000))
+            {
+                try
+                {
+                    process.Kill(entireProcessTree: true);
+                }
+                catch (InvalidOperationException)
+                {
+                    // 进程已退出
+                }
+                catch (Exception)
+                {
+                    // 忽略强制结束失败，继续回退系统 UI
+                }
+
+                return false;
+            }
+
+            return process.ExitCode == 0;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    private static bool TryLaunchAdvancedAssociationUi(string appRegistryName)
+    {
+        try
+        {
+            var type = Type.GetTypeFromCLSID(
+                new Guid("1968106d-f3b5-44cf-890e-116fcb9ecef1"));
+            if (type == null)
+            {
+                return false;
+            }
+
+            var com = Activator.CreateInstance(type);
+            if (com is not IApplicationAssociationRegistrationUI ui)
+            {
+                return false;
+            }
+
+            ui.LaunchAdvancedAssociationUI(appRegistryName);
+            return true;
+        }
+        catch (COMException)
+        {
+            return false;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
+        catch (InvalidCastException)
+        {
+            return false;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
     }
 
     private static string? FindRegisteredAppName(string browserId)
@@ -184,6 +338,20 @@ public sealed class DefaultBrowserSwitcher
                     {
                         if (string.Equals(
                                 name,
+                                candidate,
+                                StringComparison.OrdinalIgnoreCase))
+                        {
+                            return name;
+                        }
+                    }
+                }
+
+                // 宽松：名称包含候选关键字
+                foreach (var name in key.GetValueNames())
+                {
+                    foreach (var candidate in candidates)
+                    {
+                        if (name.Contains(
                                 candidate,
                                 StringComparison.OrdinalIgnoreCase))
                         {
@@ -300,6 +468,15 @@ public sealed class DefaultBrowserSwitcher
 
         void ClearUserAssociations();
     }
+
+    [ComImport]
+    [Guid("1f76a169-f994-40ac-8fc8-0959e8874710")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IApplicationAssociationRegistrationUI
+    {
+        void LaunchAdvancedAssociationUI(
+            [MarshalAs(UnmanagedType.LPWStr)] string appRegistryName);
+    }
 }
 
 /// <summary>
@@ -317,16 +494,12 @@ public sealed class BrowserSwitchResult
         Message = message;
     }
 
-    /// <summary>结果类型。</summary>
     public BrowserSwitchOutcome Outcome { get; }
 
-    /// <summary>目标浏览器显示名。</summary>
     public string BrowserName { get; }
 
-    /// <summary>面向用户的说明。</summary>
     public string Message { get; }
 
-    /// <summary>是否已成功静默切换。</summary>
     public bool IsSilentSuccess => Outcome == BrowserSwitchOutcome.Switched;
 
     public static BrowserSwitchResult AlreadyDefault(string name) =>

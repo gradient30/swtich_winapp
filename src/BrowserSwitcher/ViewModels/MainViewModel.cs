@@ -26,6 +26,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private string _theme = ThemeService.Dark;
     private bool _isSettingsVisible;
     private bool _startWithWindows;
+    private bool _startupSnapshot;
     private bool _suppressStartupApply;
 
     /// <summary>
@@ -85,7 +86,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
                 }
             });
         OpenSettingsCommand = new RelayCommand(_ => OpenSettings());
-        BackToMainCommand = new RelayCommand(_ => IsSettingsVisible = false);
+        BackToMainCommand = new RelayCommand(_ => CancelSettings());
         SaveManualPathsCommand = new RelayCommand(_ => SaveManualPaths());
         RemoveManualPathCommand = new RelayCommand(
             parameter =>
@@ -132,7 +133,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     }
 
     /// <summary>
-    /// 是否开机启动；变更时写入 HKCU Run 并持久化配置。
+    /// 是否开机启动。设置面板内仅改草稿；保存时写入 HKCU Run。
     /// </summary>
     public bool StartWithWindows
     {
@@ -144,7 +145,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
                 return;
             }
 
-            if (!_suppressStartupApply)
+            // 设置面板打开时不立即写注册表，便于「取消」回滚
+            if (!_suppressStartupApply && !IsSettingsVisible)
             {
                 ApplyStartWithWindows(value);
             }
@@ -379,6 +381,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             });
         }
 
+        _startupSnapshot = config.StartWithWindows;
         _suppressStartupApply = true;
         try
         {
@@ -388,6 +391,24 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             _suppressStartupApply = false;
         }
+    }
+
+    /// <summary>
+    /// 取消设置：丢弃草稿并关闭面板。
+    /// </summary>
+    private void CancelSettings()
+    {
+        _suppressStartupApply = true;
+        try
+        {
+            StartWithWindows = _startupSnapshot;
+        }
+        finally
+        {
+            _suppressStartupApply = false;
+        }
+
+        IsSettingsVisible = false;
     }
 
     private void SaveManualPaths()
@@ -415,15 +436,17 @@ public sealed class MainViewModel : INotifyPropertyChanged
                 config.ManualPaths.Remove(key);
             }
 
+            ApplyStartWithWindows(StartWithWindows);
             config.StartWithWindows = StartWithWindows;
             _configStore.Save(config);
+            _startupSnapshot = StartWithWindows;
             Refresh();
-            LoadSettings();
-            StatusMessage = "手动路径已保存";
+            IsSettingsVisible = false;
+            StatusMessage = "设置已保存";
         }
         catch (Exception ex)
         {
-            StatusMessage = $"保存手动路径失败：{ex.Message}";
+            StatusMessage = $"保存设置失败：{ex.Message}";
         }
     }
 

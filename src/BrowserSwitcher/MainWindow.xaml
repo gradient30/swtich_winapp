@@ -235,8 +235,10 @@
                 </ItemsControl>
             </ScrollViewer>
 
+            <!-- 设置：浮层覆盖，内容在 SettingsView 内居中紧凑卡片 -->
             <views:SettingsView Grid.Row="0"
-                                Grid.RowSpan="2">
+                                Grid.RowSpan="2"
+                                Panel.ZIndex="20">
                 <views:SettingsView.Style>
                     <Style TargetType="views:SettingsView">
                         <Setter Property="Visibility" Value="Collapsed" />

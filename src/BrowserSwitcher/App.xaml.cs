@@ -145,15 +145,7 @@ public partial class App : Application
         UpdateTrayTooltip();
 
         var menu = new ContextMenu();
-        if (TryFindResource("BrushBgElevated") is System.Windows.Media.Brush menuBg)
-        {
-            menu.Background = menuBg;
-        }
-
-        if (TryFindResource("BrushTextPrimary") is System.Windows.Media.Brush menuFg)
-        {
-            menu.Foreground = menuFg;
-        }
+        ApplyTrayMenuTheme(menu);
 
         foreach (BrowserInfo browser in _viewModel.Browsers)
         {
@@ -165,29 +157,85 @@ public partial class App : Application
                 Header = header,
                 Tag = browser,
                 IsChecked = browser.IsCurrentDefault,
-                IsCheckable = browser.IsCurrentDefault,
+                IsCheckable = false,
                 IsEnabled = browser.Status != BrowserStatus.NotFound
                             || browser.IsCurrentDefault
             };
+            ApplyTrayMenuItemTheme(item);
             item.Click += BrowserMenuItem_Click;
             menu.Items.Add(item);
         }
 
         if (menu.Items.Count > 0)
         {
-            menu.Items.Add(new Separator());
+            var sep = new Separator();
+            if (TryFindResource("ThemedMenuSeparator") is Style sepStyle)
+            {
+                sep.Style = sepStyle;
+            }
+
+            menu.Items.Add(sep);
         }
 
         var openItem = new MenuItem { Header = "打开主窗口" };
+        ApplyTrayMenuItemTheme(openItem);
         openItem.Click += (_, _) => ShowMainWindow();
         menu.Items.Add(openItem);
 
         var exitItem = new MenuItem { Header = "退出" };
+        ApplyTrayMenuItemTheme(exitItem);
         exitItem.Click += (_, _) => ExitApplication();
         menu.Items.Add(exitItem);
 
         _trayIcon.ContextMenu = null;
         TrayContextMenuPresenter.ShowNearCursor(menu, _mainWindow);
+    }
+
+    /// <summary>
+    /// 为托盘 ContextMenu 套用自绘主题样式（避免系统白底白字）。
+    /// </summary>
+    private void ApplyTrayMenuTheme(ContextMenu menu)
+    {
+        if (TryFindResource("ThemedContextMenu") is Style menuStyle)
+        {
+            menu.Style = menuStyle;
+        }
+
+        if (TryFindResource("ThemedTrayMenuItem") is Style itemStyle)
+        {
+            menu.Resources[typeof(MenuItem)] = itemStyle;
+        }
+
+        if (TryFindResource("BrushBgElevated") is System.Windows.Media.Brush bg)
+        {
+            menu.Background = bg;
+        }
+
+        if (TryFindResource("BrushTextPrimary") is System.Windows.Media.Brush fg)
+        {
+            menu.Foreground = fg;
+        }
+
+        if (TryFindResource("BrushLineSubtle") is System.Windows.Media.Brush border)
+        {
+            menu.BorderBrush = border;
+        }
+    }
+
+    /// <summary>
+    /// 为单个托盘菜单项套用主题前景/样式。
+    /// </summary>
+    private void ApplyTrayMenuItemTheme(MenuItem item)
+    {
+        if (TryFindResource("ThemedTrayMenuItem") is Style itemStyle)
+        {
+            item.Style = itemStyle;
+        }
+
+        if (TryFindResource("BrushTextPrimary") is System.Windows.Media.Brush fg)
+        {
+            item.Foreground = fg;
+        }
     }
 
     private void UpdateTrayTooltip()

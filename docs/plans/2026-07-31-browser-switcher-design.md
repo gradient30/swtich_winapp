@@ -17,7 +17,7 @@ Windows 下切换默认浏览器需经过「设置 → 应用 → 默认应用 �
 | 技术栈 | .NET 8 + WPF |
 | 目标浏览器 | Brave、Google Chrome、Internet Explorer、Microsoft Edge |
 | 检测 | 自动扫描；失败或覆盖时允许手动指定 `.exe` |
-| 设为默认策略 | 始终打开系统「默认应用」页（`ms-settings:defaultapps`），不静默改关联 |
+| 设为默认策略 | 优先可选社区工具直切 → COM（兼容）→ 关联 UI / `ms-settings` 深链；不以改 UserChoice/UCPD 绕过为方案 |
 
 ## 架构
 
@@ -73,10 +73,10 @@ BrowserSwitcher/
 - 启动与刷新时校验路径是否存在；失效可提示并重新指定
 
 ### 设为默认流程
-1. 用户选择浏览器
-2. `SettingsLauncher` 启动 `ms-settings:defaultapps`
-3. 应用内提示：请选择对应浏览器名称
-4. 不修改注册表、不请求管理员、不静默改默认关联
+1. 用户选择浏览器（托盘或主窗口）
+2. `DefaultBrowserSwitcher` 按序尝试：本机 `SetDefaultBrowser`（可选）→ COM SetAppAsDefault → LaunchAdvancedAssociationUI → `ms-settings:defaultapps?registeredApp…` 深链 → 通用默认应用页
+3. 应用内提示说明结果（已直切 / 请在系统页点一次确认）
+4. 本应用不请求管理员、不以禁用 UCPD / 改 UserChoice 哈希作为功能
 
 ### 数据流
 
