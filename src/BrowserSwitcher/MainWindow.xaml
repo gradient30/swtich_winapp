@@ -28,11 +28,11 @@
                 <Separator />
                 <MenuItem Header="深色模式"
                           IsCheckable="True"
-                          IsChecked="{Binding IsDarkTheme}"
+                          IsChecked="{Binding IsDarkTheme, Mode=OneWay}"
                           Command="{Binding SetDarkThemeCommand}" />
                 <MenuItem Header="浅色模式"
                           IsCheckable="True"
-                          IsChecked="{Binding IsLightTheme}"
+                          IsChecked="{Binding IsLightTheme, Mode=OneWay}"
                           Command="{Binding SetLightThemeCommand}" />
             </MenuItem>
             <MenuItem Header="帮助(_H)">
