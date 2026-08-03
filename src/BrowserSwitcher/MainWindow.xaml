@@ -25,10 +25,31 @@
                 <MenuItem Header="刷新列表"
                           Command="{Binding RefreshCommand}" />
             </MenuItem>
+            <MenuItem Header="帮助(_H)">
+                <MenuItem Header="关于与更新说明…"
+                          Command="{Binding ShowHelpCommand}" />
+            </MenuItem>
         </Menu>
 
         <Border DockPanel.Dock="Bottom" Style="{StaticResource StatusBarStyle}">
             <DockPanel LastChildFill="True">
+                <StackPanel DockPanel.Dock="Right"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center"
+                            Margin="12,0,0,0">
+                    <TextBlock VerticalAlignment="Center"
+                               Foreground="{StaticResource BrushTextMuted}"
+                               Margin="0,0,8,0"
+                               Text="{Binding AppVersion, StringFormat=v{0}}" />
+                    <Button Content="?"
+                            Width="30"
+                            Height="30"
+                            FontWeight="SemiBold"
+                            ToolTip="作用说明与本次更新"
+                            Style="{StaticResource GhostButton}"
+                            Padding="0"
+                            Command="{Binding ShowHelpCommand}" />
+                </StackPanel>
                 <Button DockPanel.Dock="Left"
                         Content="刷新"
                         Style="{StaticResource GhostButton}"

@@ -17,13 +17,19 @@ dotnet run --project src/BrowserSwitcher
 
 ## 发布
 
+版本约定见 [`docs/releases/VERSIONING.md`](docs/releases/VERSIONING.md)。面向用户的更新说明在 `docs/releases/x.y.z.md`，发版时同步到 `src/BrowserSwitcher/Resources/ReleaseNotes.md`。
+
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained false
+# 将 1.1.0 换成当前 Version
+$ver = "1.1.0"
+$out = "dist\BrowserSwitcher-$ver-win-x64"
+dotnet publish src/BrowserSwitcher/BrowserSwitcher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o $out
+Compress-Archive -Path "$out\BrowserSwitcher.exe" -DestinationPath "dist\BrowserSwitcher-$ver-win-x64.zip" -Force
 ```
 
-发布产物默认位于：
+发布产物示例：
 
-`src/BrowserSwitcher/bin/Release/net8.0-windows/win-x64/publish/`
+`dist/BrowserSwitcher-1.1.0-win-x64.zip`
 
 ## 使用说明
 

@@ -88,6 +88,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
                     RemoveManualPath(entry);
                 }
             });
+        ShowHelpCommand = new RelayCommand(_ => ShowHelp());
     }
 
     /// <summary>当前检测到的浏览器列表。</summary>
@@ -161,6 +162,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     /// <summary>从编辑列表移除一条手动路径。</summary>
     public ICommand RemoveManualPathCommand { get; }
+
+    /// <summary>打开帮助（作用说明 + 本次更新）。</summary>
+    public ICommand ShowHelpCommand { get; }
 
     /// <summary>
     /// 加载配置、检测浏览器并更新集合。
@@ -307,6 +311,16 @@ public sealed class MainViewModel : INotifyPropertyChanged
         IsSettingsVisible = true;
     }
 
+    private void ShowHelp()
+    {
+        var helpText = new ReleaseNotesService().LoadHelpText();
+        var window = new HelpWindow(AppVersion, helpText)
+        {
+            Owner = Application.Current?.MainWindow
+        };
+        window.ShowDialog();
+    }
+
     private void LoadSettings()
     {
         var config = _configStore.Load();
@@ -427,7 +441,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private static string ResolveAppVersion()
     {
         var version = Assembly.GetExecutingAssembly().GetName().Version;
-        return version?.ToString() ?? "0.0.0.0";
+        if (version == null)
+        {
+            return "0.0.0";
+        }
+
+        return $"{version.Major}.{version.Minor}.{version.Build}";
     }
 
     private void OnPropertyChanged(
