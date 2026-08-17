@@ -144,7 +144,7 @@ public sealed class ReleaseNotesService
             在 Windows 托盘快速管理默认浏览器，减少在系统设置中层层查找。
 
             本次更新
-            · 请查看 docs/releases 目录下的版本说明
+            · 请查看仓库 README 与 docs/releases/CHANGELOG.md
             """.Trim();
     }
 }

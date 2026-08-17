@@ -79,26 +79,27 @@ public sealed class DefaultBrowserSwitcher
 
     /// <summary>
     /// 社区工具 SetDefaultBrowser 命令行参数（按浏览器 Id）。
-    /// 快捷参数仅官方提供 chrome/ie/edge；Brave 用 HKLM Brave。
     /// </summary>
     public static string? BuildSetDefaultBrowserArgument(string browserId)
     {
-        return browserId switch
-        {
-            "chrome" => "chrome",
-            "edge" => "edge",
-            "brave" => "HKLM Brave",
-            "ie" => "ie",
-            _ => null
-        };
+        var attempts = ExternalAssociationTools.BuildSetDefaultBrowserArgumentAttempts(
+            browserId);
+        return attempts.Count > 0 ? attempts[0] : null;
     }
+
+    internal static string? FindSetDefaultBrowserExecutable() =>
+        ExternalAssociationTools.FindSetDefaultBrowserExecutable();
 
     /// <summary>
     /// 尝试切换默认浏览器。
     /// </summary>
+    /// <param name="forceDirectSwitch">
+    /// 个人本地模式：优先提权调用 SetUserFTA/SetDefaultBrowser，失败不自动打开设置页。
+    /// </param>
     public BrowserSwitchResult Switch(
         BrowserInfo browser,
-        IReadOnlyList<BrowserInfo> knownBrowsers)
+        IReadOnlyList<BrowserInfo> knownBrowsers,
+        bool forceDirectSwitch = false)
     {
         ArgumentNullException.ThrowIfNull(browser);
         ArgumentNullException.ThrowIfNull(knownBrowsers);
@@ -119,6 +120,22 @@ public sealed class DefaultBrowserSwitcher
 
         var registeredName = _findRegisteredAppName(browser.Id)
                              ?? GuessRegisteredName(browser);
+
+        if (forceDirectSwitch)
+        {
+            var forceResult = TryForceDirectSwitch(
+                browser,
+                knownBrowsers,
+                registeredName);
+            if (forceResult is not null)
+            {
+                return forceResult;
+            }
+
+            return BuildForceSwitchFailedResult(browser.DisplayName);
+        }
+
+        // --- 标准模式（合规回退设置 UI）---
 
         // 1) 本机若已安装社区工具 SetDefaultBrowser，优先尝试真正直切
         if (_tryExternalSetDefaultBrowser(browser.Id))
@@ -170,6 +187,115 @@ public sealed class DefaultBrowserSwitcher
             $"已打开系统默认应用页，请选择：{browser.DisplayName}");
     }
 
+    private BrowserSwitchResult? TryForceDirectSwitch(
+        BrowserInfo browser,
+        IReadOnlyList<BrowserInfo> knownBrowsers,
+        string? registeredName)
+    {
+        // 0) 内置 UserChoice 直写（个人本地，UCPD 未拦截时）
+        if (UserChoiceAssociationWriter.TrySetDefaultBrowserById(browser.Id))
+        {
+            var afterNative = _defaultBrowserResolver.ResolveCurrentDefaultId(
+                knownBrowsers);
+            if (afterNative == browser.Id)
+            {
+                return BrowserSwitchResult.Switched(browser.DisplayName);
+            }
+        }
+
+        if (TryExternalToolSwitch(
+                browser.Id,
+                ExternalAssociationTools.FindSetUserFtaExecutable(),
+                ExternalAssociationTools.BuildSetUserFtaArgumentAttempts(browser.Id),
+                knownBrowsers,
+                browser.Id))
+        {
+            return BrowserSwitchResult.Switched(browser.DisplayName);
+        }
+
+        if (TryExternalToolSwitch(
+                browser.Id,
+                ExternalAssociationTools.FindSetDefaultBrowserExecutable(),
+                ExternalAssociationTools.BuildSetDefaultBrowserArgumentAttempts(browser.Id),
+                knownBrowsers,
+                browser.Id))
+        {
+            return BrowserSwitchResult.Switched(browser.DisplayName);
+        }
+
+        if (!string.IsNullOrWhiteSpace(registeredName)
+            && _trySetAppAsDefault(registeredName))
+        {
+            var afterCom = _defaultBrowserResolver.ResolveCurrentDefaultId(knownBrowsers);
+            if (afterCom == browser.Id)
+            {
+                return BrowserSwitchResult.Switched(browser.DisplayName);
+            }
+        }
+
+        return null;
+    }
+
+    private bool TryExternalToolSwitch(
+        string browserId,
+        string? exe,
+        IReadOnlyList<string> argumentAttempts,
+        IReadOnlyList<BrowserInfo> knownBrowsers,
+        string expectedBrowserId)
+    {
+        if (exe is null || argumentAttempts.Count == 0)
+        {
+            return false;
+        }
+
+        foreach (var args in argumentAttempts)
+        {
+            if (!AdminProcessLauncher.TryRun(exe, args))
+            {
+                continue;
+            }
+
+            if (_defaultBrowserResolver.ResolveCurrentDefaultId(knownBrowsers)
+                == expectedBrowserId)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static BrowserSwitchResult BuildForceSwitchFailedResult(string displayName)
+    {
+        var ucpd = UcpdManager.IsProtectionEnabled();
+        var hasFta = ExternalAssociationTools.FindSetUserFtaExecutable() is not null;
+        var hasLegacy = ExternalAssociationTools.FindSetDefaultBrowserExecutable() is not null;
+
+        var hint = new List<string>();
+        if (!hasFta && !hasLegacy)
+        {
+            hint.Add(
+                "请将 SetUserFTA.exe 放到程序目录 Tools\\ 下（见 setuserfta.com，个人免费）。");
+        }
+
+        if (ucpd)
+        {
+            hint.Add(
+                "本机 UCPD 仍在拦截 UserChoice 写入：可在设置中「禁用 UCPD」并重启，"
+                + "或使用 SetUserFTA 2.1+。");
+        }
+
+        if (hasFta || hasLegacy)
+        {
+            hint.Add("工具已运行但未生效，请确认 UAC 已允许，并以管理员重试。");
+        }
+
+        return BrowserSwitchResult.ForceSwitchFailed(
+            displayName,
+            $"无法直切为 {displayName}。"
+            + (hint.Count > 0 ? " " + string.Join(" ", hint) : string.Empty));
+    }
+
     private static string GuessRegisteredName(BrowserInfo browser)
     {
         return browser.Id switch
@@ -204,22 +330,6 @@ public sealed class DefaultBrowserSwitcher
         }
 
         return false;
-    }
-
-    /// <summary>
-    /// 查找本机 SetDefaultBrowser.exe（社区工具，不随本应用分发）。
-    /// 仅扫描程序目录，避免 PATH 劫持。
-    /// </summary>
-    internal static string? FindSetDefaultBrowserExecutable()
-    {
-        var baseDir = AppContext.BaseDirectory;
-        var candidates = new[]
-        {
-            Path.Combine(baseDir, "Tools", "SetDefaultBrowser.exe"),
-            Path.Combine(baseDir, "SetDefaultBrowser.exe")
-        };
-
-        return candidates.FirstOrDefault(File.Exists);
     }
 
     private static bool TryExternalSetDefaultBrowser(string browserId)
@@ -518,6 +628,9 @@ public sealed class BrowserSwitchResult
         string name,
         string message) =>
         new(BrowserSwitchOutcome.FallbackToSettings, name, message);
+
+    public static BrowserSwitchResult ForceSwitchFailed(string name, string message) =>
+        new(BrowserSwitchOutcome.ForceSwitchFailed, name, message);
 }
 
 /// <summary>切换结果枚举。</summary>
@@ -525,5 +638,6 @@ public enum BrowserSwitchOutcome
 {
     AlreadyDefault,
     Switched,
-    FallbackToSettings
+    FallbackToSettings,
+    ForceSwitchFailed
 }

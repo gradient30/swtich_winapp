@@ -87,6 +87,37 @@
                                       IsChecked="{Binding StartWithWindows}" />
                         </Border>
 
+                        <!-- 一键直切（个人本地） -->
+                        <TextBlock Text="默认浏览器"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource BrushTextMuted}"
+                                   Margin="0,0,0,8" />
+                        <Border Background="{DynamicResource BrushBgElevated}"
+                                CornerRadius="8"
+                                Padding="12,10"
+                                Margin="0,0,0,8">
+                            <StackPanel>
+                                <CheckBox Content="托盘一键直切（提权 + SetUserFTA）"
+                                          IsChecked="{Binding ForceDirectSwitch}"
+                                          Margin="0,0,0,8" />
+                                <TextBlock Text="{Binding UcpdStatusText}"
+                                           TextWrapping="Wrap"
+                                           FontSize="11"
+                                           Foreground="{DynamicResource BrushTextMuted}"
+                                           Margin="0,0,0,8" />
+                                <TextBlock TextWrapping="Wrap"
+                                           FontSize="11"
+                                           Foreground="{DynamicResource BrushTextMuted}"
+                                           Margin="0,0,0,8"
+                                           Text="将 SetUserFTA.exe 放入程序目录 Tools\（setuserfta.com 个人版）。" />
+                                <Button Content="禁用 UCPD（需重启）"
+                                        HorizontalAlignment="Left"
+                                        Style="{DynamicResource GhostButton}"
+                                        Command="{Binding DisableUcpdCommand}" />
+                            </StackPanel>
+                        </Border>
+
                         <!-- 手动路径 -->
                         <DockPanel Margin="0,0,0,8">
                             <TextBlock Text="手动路径"

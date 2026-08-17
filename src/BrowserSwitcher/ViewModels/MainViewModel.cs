@@ -27,6 +27,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private bool _isSettingsVisible;
     private bool _startWithWindows;
     private bool _startupSnapshot;
+    private bool _forceDirectSwitch = true;
+    private bool _forceDirectSnapshot = true;
     private bool _suppressStartupApply;
 
     /// <summary>
@@ -73,7 +75,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _themeService = themeService ?? new ThemeService();
 
         AppVersion = ResolveAppVersion();
-        _theme = ThemeService.Normalize(_configStore.Load().Theme);
+        var initialConfig = _configStore.Load();
+        _theme = ThemeService.Normalize(initialConfig.Theme);
+        _forceDirectSwitch = initialConfig.ForceDirectSwitch;
         _themeService.Apply(_theme);
 
         RefreshCommand = new RelayCommand(_ => Refresh());
@@ -101,6 +105,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         SetLightThemeCommand = new RelayCommand(_ => SetTheme(ThemeService.Light));
         OpenDefaultAppsSettingsCommand = new RelayCommand(
             _ => OpenDefaultAppsSettings());
+        DisableUcpdCommand = new RelayCommand(_ => DisableUcpdProtection());
     }
 
     /// <summary>当前检测到的浏览器列表。</summary>
@@ -188,6 +193,19 @@ public sealed class MainViewModel : INotifyPropertyChanged
     /// <summary>打开系统默认应用设置页（托盘快捷跳转）。</summary>
     public ICommand OpenDefaultAppsSettingsCommand { get; }
 
+    /// <summary>禁用 UCPD 驱动（需管理员 + 重启，个人本地用）。</summary>
+    public ICommand DisableUcpdCommand { get; }
+
+    /// <summary>个人本地：托盘直切模式（提权 + 外部工具）。</summary>
+    public bool ForceDirectSwitch
+    {
+        get => _forceDirectSwitch;
+        set => SetField(ref _forceDirectSwitch, value);
+    }
+
+    /// <summary>UCPD 保护状态说明。</summary>
+    public string UcpdStatusText => UcpdManager.DescribeStatus();
+
     /// <summary>当前是否深色主题（菜单勾选）。</summary>
     public bool IsDarkTheme =>
         ThemeService.Normalize(_theme) == ThemeService.Dark;
@@ -204,6 +222,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         try
         {
             var config = _configStore.Load();
+            _forceDirectSwitch = config.ForceDirectSwitch;
             var detected = _detector.Detect(config);
             var defaultId = _defaultBrowserResolver.ResolveCurrentDefaultId(
                 detected);
@@ -259,7 +278,11 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         try
         {
-            var result = _browserSwitcher.Switch(browser, Browsers.ToList());
+            var config = _configStore.Load();
+            var result = _browserSwitcher.Switch(
+                browser,
+                Browsers.ToList(),
+                config.ForceDirectSwitch);
             StatusMessage = result.Message;
             if (result.IsSilentSuccess
                 || result.Outcome == BrowserSwitchOutcome.AlreadyDefault)
@@ -268,29 +291,75 @@ public sealed class MainViewModel : INotifyPropertyChanged
             }
             else if (result.Outcome == BrowserSwitchOutcome.FallbackToSettings)
             {
-                // 设置页已由 Switcher 打开；稍后再刷新以反映用户操作
                 Refresh();
+            }
+            else if (result.Outcome == BrowserSwitchOutcome.ForceSwitchFailed)
+            {
+                MessageBox.Show(
+                    result.Message,
+                    "直切失败",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
             }
         }
         catch (Exception ex)
         {
             StatusMessage = $"切换失败：{ex.Message}";
-            try
+            var config = _configStore.Load();
+            if (!config.ForceDirectSwitch)
             {
-                _settingsLauncher.OpenDefaultApps();
-                StatusMessage =
-                    $"切换失败，已打开系统设置。请手动选择：{browser.DisplayName}";
+                try
+                {
+                    _settingsLauncher.OpenDefaultApps();
+                    StatusMessage =
+                        $"切换失败，已打开系统设置。请手动选择：{browser.DisplayName}";
+                }
+                catch (Exception openEx)
+                {
+                    StatusMessage = $"无法打开系统设置：{openEx.Message}";
+                    MessageBox.Show(
+                        $"无法打开系统默认应用设置页。\n\n{openEx.Message}\n\n"
+                        + "请手动打开：设置 → 应用 → 默认应用。",
+                        "浏览器切换器",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                }
             }
-            catch (Exception openEx)
+            else
             {
-                StatusMessage = $"无法打开系统设置：{openEx.Message}";
                 MessageBox.Show(
-                    $"无法打开系统默认应用设置页。\n\n{openEx.Message}\n\n"
-                    + "请手动打开：设置 → 应用 → 默认应用。",
-                    "浏览器切换器",
+                    $"切换失败：{ex.Message}",
+                    "直切失败",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
             }
+        }
+    }
+
+    private void DisableUcpdProtection()
+    {
+        if (!UcpdManager.IsProtectionEnabled())
+        {
+            StatusMessage = "UCPD 已禁用或未加载，无需重复操作。";
+            OnPropertyChanged(nameof(UcpdStatusText));
+            return;
+        }
+
+        var ok = UcpdManager.TryDisableProtection();
+        OnPropertyChanged(nameof(UcpdStatusText));
+        if (ok)
+        {
+            MessageBox.Show(
+                "已请求禁用 UCPD 服务并停用 velocity 计划任务。\n\n"
+                + "请重启 Windows 后，确保 Tools\\SetUserFTA.exe 已就位，再试托盘直切。",
+                "需重启",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            StatusMessage = "UCPD 已标记禁用，请重启系统。";
+        }
+        else
+        {
+            StatusMessage = "禁用 UCPD 失败（可能取消了 UAC）。";
         }
     }
 
@@ -409,10 +478,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
 
         _startupSnapshot = config.StartWithWindows;
+        _forceDirectSnapshot = config.ForceDirectSwitch;
         _suppressStartupApply = true;
         try
         {
             StartWithWindows = config.StartWithWindows;
+            ForceDirectSwitch = config.ForceDirectSwitch;
         }
         finally
         {
@@ -429,6 +500,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         try
         {
             StartWithWindows = _startupSnapshot;
+            ForceDirectSwitch = _forceDirectSnapshot;
         }
         finally
         {
@@ -465,8 +537,11 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
             ApplyStartWithWindows(StartWithWindows);
             config.StartWithWindows = StartWithWindows;
+            config.ForceDirectSwitch = ForceDirectSwitch;
+            _forceDirectSwitch = ForceDirectSwitch;
             _configStore.Save(config);
             _startupSnapshot = StartWithWindows;
+            _forceDirectSnapshot = ForceDirectSwitch;
             Refresh();
             IsSettingsVisible = false;
             StatusMessage = "设置已保存";
