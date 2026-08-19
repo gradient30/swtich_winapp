@@ -193,14 +193,10 @@ public sealed class DefaultBrowserSwitcher
         string? registeredName)
     {
         // 0) 内置 UserChoice 直写（个人本地，UCPD 未拦截时）
-        if (UserChoiceAssociationWriter.TrySetDefaultBrowserById(browser.Id))
+        if (UserChoiceAssociationWriter.TrySetDefaultBrowserById(browser.Id)
+            && VerifyDefaultStable(knownBrowsers, browser.Id))
         {
-            var afterNative = _defaultBrowserResolver.ResolveCurrentDefaultId(
-                knownBrowsers);
-            if (afterNative == browser.Id)
-            {
-                return BrowserSwitchResult.Switched(browser.DisplayName);
-            }
+            return BrowserSwitchResult.Switched(browser.DisplayName);
         }
 
         if (TryExternalToolSwitch(
@@ -263,6 +259,25 @@ public sealed class DefaultBrowserSwitcher
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// 写入后立即校验，并在短延迟后再次校验，避免 Hash 错误导致“先成功后被系统回滚”。
+    /// </summary>
+    private bool VerifyDefaultStable(
+        IReadOnlyList<BrowserInfo> knownBrowsers,
+        string expectedBrowserId,
+        int delayMs = 400)
+    {
+        if (_defaultBrowserResolver.ResolveCurrentDefaultId(knownBrowsers)
+            != expectedBrowserId)
+        {
+            return false;
+        }
+
+        Thread.Sleep(delayMs);
+        return _defaultBrowserResolver.ResolveCurrentDefaultId(knownBrowsers)
+               == expectedBrowserId;
     }
 
     private static BrowserSwitchResult BuildForceSwitchFailedResult(string displayName)

@@ -1,6 +1,6 @@
 # 架构与核心原理
 
-> 与代码同步至 **1.4.0**。实现位于 `src/BrowserSwitcher/`。
+> 与代码同步至 **1.4.1**。实现位于 `src/BrowserSwitcher/`。
 
 ## 技术栈
 
@@ -99,10 +99,8 @@ HKCU\Software\Microsoft\Windows\Shell\Associations\UrlAssociations\http\UserChoi
 ```
 
 - `extension`：`http`、`https`、`.htm`、`.html`
-- `FileTime`：UserChoice 注册表键**写入前**的最后修改时间（`RegQueryInfoKey` 读取；Win10 无 `RegGetKeyLastWriteTime` API）
-- 对 Unicode 字符串 + `\0` 做 MD5，再经自定义混合运算，输出 8 字节 Base64 作为 `Hash` 值
-
-写入顺序：读时间戳 → 写 `ProgId` → 计算 Hash → 写 `Hash`。
+- `FileTime`：UserChoice 键在 **ProgId 写入并 Flush 之后** 的最后修改时间（`RegQueryInfoKey`；Win10 无 `RegGetKeyLastWriteTime`）
+- 写入顺序：删除旧 Hash → 写 ProgId → 读时间戳 → 算 Hash → 写 Hash
 
 ### ProgId 映射
 

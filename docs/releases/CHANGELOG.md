@@ -2,6 +2,11 @@
 
 面向用户的版本历史。发版流程见 [VERSIONING.md](VERSIONING.md)。程序内「?」帮助仅展示**当前版本**（`src/BrowserSwitcher/Resources/ReleaseNotes.md`）。
 
+## 1.4.1
+
+- 修复多次切换后默认浏览器被系统回滚：Hash 现基于 ProgId 写入后的时间戳计算
+- 切换成功前增加短延迟二次校验，减少误报成功
+
 ## 1.4.0
 
 - 新增 **ForceDirectSwitch**（默认开启）：内置 UserChoice + Hash 直写（http/https）

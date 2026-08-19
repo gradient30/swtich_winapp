@@ -76,11 +76,6 @@ public static class UserChoiceAssociationWriter
             var basePath = GetAssociationKeyPath(extension);
             var userChoicePath = basePath + @"\UserChoice";
 
-            if (!TryGetKeyLastWriteUtc(userChoicePath, out var timestamp))
-            {
-                timestamp = DateTime.UtcNow;
-            }
-
             using var baseKey = Registry.CurrentUser.CreateSubKey(
                 basePath,
                 writable: true);
@@ -97,7 +92,24 @@ public static class UserChoiceAssociationWriter
                 return false;
             }
 
+            // 先清掉旧 Hash，避免 ProgId 已变而 Hash 仍过期时被系统后台校验回滚。
+            try
+            {
+                userChoice.DeleteValue("Hash", throwOnMissingValue: false);
+            }
+            catch (IOException)
+            {
+                // 忽略删除失败，继续尝试写入
+            }
+
             userChoice.SetValue("ProgId", progId, RegistryValueKind.String);
+            userChoice.Flush();
+
+            // Hash 必须基于 ProgId 写入后的键修改时间（Firefox / 微软校验一致）。
+            if (!TryGetKeyLastWriteUtc(userChoicePath, out var timestamp))
+            {
+                timestamp = DateTime.UtcNow;
+            }
 
             var hash = UserChoiceHash.Generate(extension, progId, timestamp);
             if (hash is null)
@@ -106,6 +118,7 @@ public static class UserChoiceAssociationWriter
             }
 
             userChoice.SetValue("Hash", hash, RegistryValueKind.String);
+            userChoice.Flush();
             return true;
         }
         catch (UnauthorizedAccessException)

@@ -58,5 +58,17 @@ public class LiveSwitchIntegrationTests
         var backProgId = backId == "chrome" ? "ChromeHTML" : "BraveHTML";
         Assert.True(UserChoiceAssociationWriter.TrySetDefaultBrowserById(backId));
         Assert.True(HttpAndHttpsMatch(backProgId));
+
+        // 连续往返，模拟多次托盘切换
+        for (var i = 0; i < 3; i++)
+        {
+            Assert.True(UserChoiceAssociationWriter.TrySetDefaultBrowserById("chrome"));
+            Thread.Sleep(300);
+            Assert.True(HttpAndHttpsMatch("ChromeHTML"));
+
+            Assert.True(UserChoiceAssociationWriter.TrySetDefaultBrowserById("brave"));
+            Thread.Sleep(300);
+            Assert.True(HttpAndHttpsMatch("BraveHTML"));
+        }
     }
 }
