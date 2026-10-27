@@ -83,5 +83,7 @@ dotnet test --filter "FullyQualifiedName~LiveSwitch"
 | 文件 | 内容 |
 | --- | --- |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 架构、模块、切换核心原理（UserChoice / UCPD / Hash） |
+| [docs/dev-environment.md](docs/dev-environment.md) | 开发机环境注意事项（git push 坑与 `gpush`） |
+| [docs/startup-on-boot.md](docs/startup-on-boot.md) | 开机启动实现方案（供同类应用参考） |
 | [docs/releases/CHANGELOG.md](docs/releases/CHANGELOG.md) | 版本更新历史 |
 | [docs/releases/VERSIONING.md](docs/releases/VERSIONING.md) | 发版流程 |
